@@ -55,6 +55,10 @@ function attachEventListeners() {
     ui.searchBox.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        // Don't search if disabled or already searching
+        if (ui.searchBox.disabled || ui.isSearchActive) {
+          return;
+        }
         const query = ui.searchBox.value.trim();
         if (query) {
           handleSearch(query);
@@ -75,6 +79,10 @@ function attachEventListeners() {
   if (ui.searchButton) {
     ui.searchButton.addEventListener('click', (e) => {
       e.preventDefault();
+      // Don't search if disabled or already searching
+      if (ui.searchButton.disabled || ui.isSearchActive) {
+        return;
+      }
       const query = ui.searchBox.value.trim();
       if (query) {
         handleSearch(query);
@@ -160,6 +168,12 @@ function attachEventListeners() {
  * @param {string} query - Search query
  */
 async function handleSearch(query) {
+  // Prevent search if already in progress
+  if (ui.isSearchActive) {
+    console.log('[CommentSearch] Search already in progress, ignoring new request');
+    return;
+  }
+
   console.log('[CommentSearch] Starting search for:', query);
   currentSearchQuery = query;
 
@@ -168,7 +182,7 @@ async function handleSearch(query) {
     fetcher.abort();
   }
 
-  // Show loading state
+  // Show loading state (this will also disable search inputs)
   ui.showLoadingState();
 
   try {
@@ -209,6 +223,7 @@ async function handleSearch(query) {
       const matches = searcher.filterComments(domComments, query);
       
       ui.hideLoadingIndicator();
+      ui.enableSearch();
       
       for (const match of matches) {
         ui.addCommentResult(match, query, searcher);

@@ -208,6 +208,7 @@ class CommentSearchUI {
 
     // Create loading indicator
     this.createLoadingIndicator();
+    this.disableSearch();
     this.isSearchActive = true;
   }
 
@@ -224,7 +225,7 @@ class CommentSearchUI {
     loader.innerHTML = `
       <div class="quack-loading-spinner"></div>
       <div class="quack-loading-text">
-        <div>🔍 Searching comments...</div>
+        <div>Searching comments...</div>
         <div id="quack-loading-progress">Checked 0 of 0 total comments</div>
       </div>
     `;
@@ -298,6 +299,7 @@ class CommentSearchUI {
    */
   showFinalResults(matchCount) {
     this.hideLoadingIndicator();
+    this.enableSearch();
     
     if (matchCount === 0) {
       this.showNoResults();
@@ -365,6 +367,37 @@ class CommentSearchUI {
     }
     this.restoreOriginalComments();
     this.hideLoadingIndicator();
+    this.enableSearch();
+  }
+
+  /**
+   * Disable search input and button
+   */
+  disableSearch() {
+    if (this.searchBox) {
+      this.searchBox.disabled = true;
+      this.searchBox.style.opacity = '0.6';
+    }
+    if (this.searchButton) {
+      this.searchButton.disabled = true;
+      this.searchButton.style.opacity = '0.6';
+      this.searchButton.style.cursor = 'not-allowed';
+    }
+  }
+
+  /**
+   * Enable search input and button
+   */
+  enableSearch() {
+    if (this.searchBox) {
+      this.searchBox.disabled = false;
+      this.searchBox.style.opacity = '1';
+    }
+    if (this.searchButton) {
+      this.searchButton.disabled = false;
+      this.searchButton.style.opacity = '1';
+      this.searchButton.style.cursor = 'pointer';
+    }
   }
 
   /**
@@ -385,6 +418,7 @@ class CommentSearchUI {
     `;
 
     contentsContainer.appendChild(errorElement);
+    this.enableSearch();
     this.isSearchActive = false;
   }
 }

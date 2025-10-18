@@ -66,6 +66,28 @@
   background-color: var(--yt-spec-10-percent-layer);
 }
 
+/* Disabled state for search elements */
+.quack-search-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quack-search-input:disabled::placeholder {
+  color: var(--yt-spec-text-secondary);
+  opacity: 0.4;
+}
+
+.quack-search-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.quack-search-button:disabled:hover {
+  background-color: transparent;
+  color: var(--yt-spec-text-secondary);
+}
+
 .quack-settings-button {
   background: transparent;
   border: none;
