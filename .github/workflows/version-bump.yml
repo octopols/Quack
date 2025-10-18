@@ -26,11 +26,6 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-    
     - name: Get current version
       id: current
       run: |
@@ -78,29 +73,26 @@ jobs:
     
     - name: Update changelog
       run: |
+        VERSION="${{ steps.new.outputs.version }}"
+        DATE=$(date +'%Y-%m-%d')
+        
         if [ -n "${{ github.event.inputs.changelog }}" ]; then
-          # Convert [Unreleased] to [VERSION] and add new [Unreleased] section
-          VERSION="${{ steps.new.outputs.version }}"
-          DATE=$(date +'%Y-%m-%d')
-          
           # Replace [Unreleased] with [VERSION] - DATE
-          sed -i "s/## \[Unreleased\]/## [${VERSION}] - ${DATE}/" CHANGELOG.md
+          sed -i "s/## \\[Unreleased\\]/## [${VERSION}] - ${DATE}/" CHANGELOG.md
           
-          # Add new [Unreleased] section at the top
-          sed -i "/# Changelog/a\\
-\\
-## [Unreleased]\\
-\\
-### Added\\
-${{ github.event.inputs.changelog }}\\
-" CHANGELOG.md
+          # Add new [Unreleased] section with changelog entry
+          sed -i "/# Changelog/r /dev/stdin" CHANGELOG.md <<EOF
+        
+        ## [Unreleased]
+        
+        ### Added
+        ${{ github.event.inputs.changelog }}
+        EOF
           
-          echo "Updated CHANGELOG.md"
+          echo "Updated CHANGELOG.md with new entry"
         else
-          # Just convert [Unreleased] to [VERSION] without new content
-          VERSION="${{ steps.new.outputs.version }}"
-          DATE=$(date +'%Y-%m-%d')
-          sed -i "s/## \[Unreleased\]/## [${VERSION}] - ${DATE}/" CHANGELOG.md
+          # Just convert [Unreleased] to [VERSION]
+          sed -i "s/## \\[Unreleased\\]/## [${VERSION}] - ${DATE}/" CHANGELOG.md
           echo "Converted [Unreleased] to [${VERSION}] in CHANGELOG.md"
         fi
     
