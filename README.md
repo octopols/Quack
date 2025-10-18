@@ -1,5 +1,9 @@
 # Quack
 
+<div align="center">
+  <img src="icon.png" alt="Quack Icon" width="128" height="128">
+</div>
+
 ![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![Chrome](https://img.shields.io/badge/Chrome-88%2B-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -15,6 +19,33 @@ Browser extension for searching through paginated YouTube comments. Fetches and 
 - Native YouTube UI integration
 - Settings persistence via Chrome Storage API
 - Real-time search progress metrics
+
+## Showcase
+
+### Screenshots
+
+#### Search Interface
+![Search Box Integration](screenshots/search-interface.png)
+*The search box integrated seamlessly into YouTube's comments section with search and settings icons*
+
+#### Search in Action
+![Search Results](screenshots/search-results.png)
+*Real-time search results streaming as comments are fetched and filtered*
+
+#### Settings Panel
+![Settings Configuration](screenshots/settings-panel.png)
+*Configurable search options including case sensitivity, reply inclusion, and match highlighting*
+
+### Features in Action
+
+Quack integrates seamlessly into YouTube's interface, adding powerful comment search capabilities without disrupting your viewing experience. Search through thousands of comments instantly, with results streaming as they're found.
+
+**Key highlights:**
+- YouTube-native design that matches light/dark themes
+- Search icon for intuitive interaction
+- Progressive loading with real-time progress
+- Advanced filtering options via settings panel
+- Zero impact on video playback performance
 
 ## Installation
 
@@ -143,28 +174,7 @@ Data handling:
 
 ## Contributing
 
-### Bug Reports
-
-Open issue with:
-- Minimal reproduction steps
-- Browser version and OS
-- Console errors (if applicable)
-- Expected vs actual behavior
-
-### Feature Requests
-
-Open issue with enhancement label including:
-- Use case description
-- Proposed implementation (optional)
-- Alternative solutions considered
-
-### Pull Requests
-
-1. Fork repository
-2. Create feature branch: `git checkout -b feature/description`
-3. Commit changes: `git commit -m 'Add feature'`
-4. Push branch: `git push origin feature/description`
-5. Submit PR with clear description of changes
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution guidelines.
 
 ## Changelog
 

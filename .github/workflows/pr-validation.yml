@@ -1,0 +1,59 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Validate manifest.json
+      run: |
+        if ! jq empty manifest.json; then
+          echo "Invalid JSON in manifest.json"
+          exit 1
+        fi
+        echo "manifest.json is valid"
+    
+    - name: Check file structure
+      run: |
+        required_files=(
+          "manifest.json"
+          "src/content.js"
+          "src/ui.js"
+          "src/fetcher.js"
+          "src/parser.js"
+          "src/search.js"
+          "src/settings.js"
+          "src/styles.css"
+        )
+        
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "Missing required file: $file"
+            exit 1
+          fi
+        done
+        echo "All required files present"
+    
+    - name: Lint JavaScript
+      run: |
+        # Basic syntax check
+        for js_file in src/*.js; do
+          if [ -f "$js_file" ]; then
+            node -c "$js_file" || exit 1
+          fi
+        done
+        echo "JavaScript syntax validation passed"
+    
+    - name: Check CSS namespace
+      run: |
+        if grep -n "^\s*\." src/styles.css | grep -v "quack-"; then
+          echo "CSS classes must use quack- prefix"
+          exit 1
+        fi
+        echo "CSS namespace validation passed"
