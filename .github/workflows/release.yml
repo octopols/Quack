@@ -1,0 +1,108 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Extract version from tag
+      id: version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Validate manifest version
+      run: |
+        MANIFEST_VERSION=$(jq -r '.version' manifest.json)
+        if [ "$MANIFEST_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+          echo "Version mismatch: tag v${{ steps.version.outputs.version }} vs manifest $MANIFEST_VERSION"
+          exit 1
+        fi
+        echo "Version validation passed: $MANIFEST_VERSION"
+    
+    - name: Create extension package
+      run: |
+        # Remove development files from package
+        mkdir -p dist
+        cp -r . dist/quack-extension
+        cd dist/quack-extension
+        
+        # Clean up development files
+        rm -rf .git .github screenshots node_modules
+        rm -f .gitignore .gitattributes package.json CONTRIBUTING.md ARCHITECTURE.md
+        
+        # Create zip package
+        cd ..
+        zip -r "quack-v${{ steps.version.outputs.version }}.zip" quack-extension/
+        
+        # Create source package (for Chrome Web Store review)
+        cd ..
+        zip -r "dist/quack-source-v${{ steps.version.outputs.version }}.zip" . \
+          -x "dist/*" ".git/*" "node_modules/*"
+    
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Extract changelog for this version from CHANGELOG.md
+        VERSION="${{ steps.version.outputs.version }}"
+        # Look for [VERSION] or [Unreleased] patterns
+        CHANGELOG=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | head -n -1 | tail -n +2)
+        if [ -z "$CHANGELOG" ]; then
+          # Fallback to try different format or unreleased
+          CHANGELOG=$(sed -n "/## \[Unreleased\]/,/## \[/p" CHANGELOG.md | head -n -1 | tail -n +2)
+        fi
+        if [ -z "$CHANGELOG" ]; then
+          CHANGELOG="See CHANGELOG.md for full release notes"
+        fi
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        release_name: Quack v${{ steps.version.outputs.version }}
+        body: |
+          ## Chrome Extension Release v${{ steps.version.outputs.version }}
+          
+          ### Installation
+          1. Download `quack-v${{ steps.version.outputs.version }}.zip`
+          2. Extract the archive
+          3. Load unpacked extension in Chrome from the extracted folder
+          
+          ### Changes
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ### Files
+          - `quack-v${{ steps.version.outputs.version }}.zip` - Extension package for manual installation
+          - `quack-source-v${{ steps.version.outputs.version }}.zip` - Source code archive
+        draft: false
+        prerelease: false
+    
+    - name: Upload extension package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/quack-v${{ steps.version.outputs.version }}.zip
+        asset_name: quack-v${{ steps.version.outputs.version }}.zip
+        asset_content_type: application/zip
+    
+    - name: Upload source package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/quack-source-v${{ steps.version.outputs.version }}.zip
+        asset_name: quack-source-v${{ steps.version.outputs.version }}.zip
+        asset_content_type: application/zip
