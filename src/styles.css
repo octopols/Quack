@@ -1,0 +1,345 @@
+/**
+ * YouTube Comment Search - Styles
+ * Matches YouTube's design system with support for light and dark modes
+ */
+
+/* Search Container */
+.quack-search-container {
+  margin-left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quack-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--yt-spec-badge-chip-background);
+  border: 1px solid var(--yt-spec-10-percent-layer);
+  border-radius: 18px;
+  padding: 6px 12px;
+  transition: border-color 0.2s;
+}
+
+.quack-search-box:focus-within {
+  border-color: var(--yt-spec-call-to-action);
+}
+
+.quack-search-input {
+  width: 300px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--yt-spec-text-primary);
+  font-family: "Roboto", "Arial", sans-serif;
+  font-size: 14px;
+  padding: 2px 0;
+}
+
+.quack-search-input::placeholder {
+  color: var(--yt-spec-text-secondary);
+  opacity: 0.6;
+}
+
+.quack-settings-button {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--yt-spec-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.quack-settings-button:hover {
+  background-color: var(--yt-spec-badge-chip-background);
+  color: var(--yt-spec-text-primary);
+}
+
+/* Settings Popup */
+.quack-settings-popup {
+  position: fixed;
+  width: 280px;
+  background-color: var(--yt-spec-menu-background);
+  border: 1px solid var(--yt-spec-10-percent-layer);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+  overflow: hidden;
+}
+
+.quack-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--yt-spec-10-percent-layer);
+  font-weight: 500;
+  color: var(--yt-spec-text-primary);
+  font-size: 14px;
+}
+
+.quack-settings-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: var(--yt-spec-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.quack-settings-close:hover {
+  background-color: var(--yt-spec-badge-chip-background);
+}
+
+.quack-settings-body {
+  padding: 12px;
+}
+
+.quack-setting-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+  color: var(--yt-spec-text-primary);
+  font-size: 14px;
+}
+
+.quack-setting-item:hover {
+  background-color: var(--yt-spec-badge-chip-background);
+}
+
+.quack-setting-item input[type="checkbox"] {
+  margin-right: 12px;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+/* Loading Indicator */
+.quack-loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--yt-spec-text-secondary);
+}
+
+.quack-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--yt-spec-10-percent-layer);
+  border-top-color: var(--yt-spec-call-to-action);
+  border-radius: 50%;
+  animation: quack-spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes quack-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.quack-loading-text {
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.quack-loading-text div:first-child {
+  font-weight: 500;
+  color: var(--yt-spec-text-primary);
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+#quack-loading-progress {
+  color: var(--yt-spec-text-secondary);
+  font-size: 13px;
+}
+
+/* Comment Results */
+.quack-comment-result {
+  padding: 16px;
+  border-bottom: 1px solid var(--yt-spec-10-percent-layer);
+  background-color: var(--yt-spec-base-background);
+  margin-bottom: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.quack-comment-result:hover {
+  background-color: var(--yt-spec-badge-chip-background);
+}
+
+.quack-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.quack-comment-author {
+  font-weight: 500;
+  color: var(--yt-spec-text-primary);
+  font-size: 13px;
+}
+
+.quack-comment-time {
+  color: var(--yt-spec-text-secondary);
+  font-size: 12px;
+}
+
+.quack-comment-text {
+  color: var(--yt-spec-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.quack-comment-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.quack-comment-likes {
+  color: var(--yt-spec-text-secondary);
+  font-size: 12px;
+}
+
+/* Highlight Matches */
+.quack-highlight {
+  background-color: #ffeb3b;
+  color: #000;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+/* Dark mode specific highlight */
+html[dark] .quack-highlight,
+html[dark="true"] .quack-highlight {
+  background-color: #ffc107;
+  color: #000;
+}
+
+/* No Results */
+.quack-no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--yt-spec-text-secondary);
+}
+
+.quack-no-results-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.quack-no-results-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--yt-spec-text-primary);
+  margin-bottom: 8px;
+}
+
+.quack-no-results-hint {
+  font-size: 13px;
+  color: var(--yt-spec-text-secondary);
+}
+
+/* Results Count */
+.quack-results-count {
+  padding: 12px 16px;
+  background-color: var(--yt-spec-badge-chip-background);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--yt-spec-text-primary);
+  text-align: center;
+}
+
+/* Error Message */
+.quack-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.quack-error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.quack-error-text {
+  font-size: 14px;
+  color: var(--yt-spec-text-primary);
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .quack-search-input {
+    width: 200px;
+  }
+
+  .quack-settings-popup {
+    width: 240px;
+  }
+
+  .quack-comment-result {
+    padding: 12px;
+  }
+}
+
+/* Accessibility */
+.quack-search-input:focus,
+.quack-settings-button:focus,
+.quack-settings-close:focus,
+.quack-setting-item:focus-within {
+  outline: 2px solid var(--yt-spec-call-to-action);
+  outline-offset: 2px;
+}
+
+/* Animation for results appearing */
+@keyframes quack-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.quack-comment-result {
+  animation: quack-fadeIn 0.3s ease-out;
+}

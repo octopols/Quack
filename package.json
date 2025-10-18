@@ -1,0 +1,26 @@
+{
+  "name": "youtube-comment-search",
+  "version": "2.0.0",
+  "description": "Chrome extension to search through ALL comments on YouTube videos",
+  "scripts": {
+    "convert-icons": "node convert-icons.js"
+  },
+  "keywords": [
+    "youtube",
+    "comments",
+    "search",
+    "chrome-extension",
+    "browser-extension"
+  ],
+  "author": "YouTube Comment Search Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/yt-comment-search.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/yt-comment-search/issues"
+  },
+  "homepage": "https://github.com/yourusername/yt-comment-search#readme",
+  "devDependencies": {}
+}
