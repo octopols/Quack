@@ -1,5 +1,3 @@
-# Quack
-
 <div align="center">
   <img src="icon.png" alt="Quack Icon" width="128" height="128">
 </div>
@@ -26,14 +24,17 @@ Browser extension for searching through paginated YouTube comments. Fetches and 
 
 #### Search Interface
 ![Search Box Integration](screenshots/search-interface.png)
+
 *The search box integrated seamlessly into YouTube's comments section with search and settings icons*
 
 #### Search in Action
 ![Search Results](screenshots/search-results.png)
+
 *Real-time search results streaming as comments are fetched and filtered*
 
 #### Settings Panel
 ![Settings Configuration](screenshots/settings-panel.png)
+
 *Configurable search options including case sensitivity, reply inclusion, and match highlighting*
 
 ### Features in Action
@@ -114,51 +115,6 @@ quack/
     └── styles.css        # Scoped styling (quack-* namespace)
 ```
 
-### Comment Format Support
-
-Handles multiple YouTube data structures:
-- Legacy: `commentRenderer`
-- Current: `commentViewModel`
-- Entity-based: `commentEntityPayload`
-
-Parser automatically detects format and normalizes to unified schema.
-
-### Performance Characteristics
-
-- Memory: <100MB for ~5000 comments
-- CPU: <10% during active search
-- No impact on video playback or core YouTube functionality
-
-## Troubleshooting
-
-### Search box not appearing
-
-- Verify page URL matches `/watch` pattern
-- Ensure comments section has loaded (wait for DOM)
-- Check browser console for errors (F12)
-- Verify extension is enabled in `chrome://extensions/`
-
-### No results returned
-
-- Disable case-sensitive matching if enabled
-- Check reply inclusion settings
-- Verify comment hasn't been deleted or hidden
-- Try substring match instead of exact phrase
-
-### Slow search performance
-
-- Videos with >10k comments may take significant time
-- Check network connectivity (affects API calls)
-- Hard limit: 100 pages (~2000 comments)
-- Consider clearing cache and reloading
-
-### Settings not persisting
-
-- Verify Chrome sync is enabled
-- Check Chrome Storage quota hasn't been exceeded
-- Try removing and reinstalling extension
-- Clear extension data: chrome://extensions/ > Remove > Reinstall
-
 ## Permissions
 
 Required permissions:
@@ -175,19 +131,6 @@ Data handling:
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution guidelines.
-
-## Changelog
-
-### v2.0.0 (October 18, 2025)
-
-- Complete rewrite with modular architecture
-- Support for new YouTube data formats (commentViewModel, commentEntityPayload)
-- Progressive result streaming
-- Configurable settings with persistence
-- Match highlighting
-- Improved API pagination handling
-- Better error handling and format fallbacks
-- Fixed extraction issues with updated YouTube DOM structure
 
 ## License
 
