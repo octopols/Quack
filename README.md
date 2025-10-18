@@ -43,13 +43,13 @@ Browser extension for searching through paginated YouTube comments. Fetches and 
 
 1. Navigate to YouTube video with comments enabled
 2. Locate search input adjacent to "Sort by" dropdown
-3. Enter query string and press Enter
+3. Enter query string and press Enter or click the search icon
 4. Results stream progressively as comments are fetched and filtered
 5. Press Escape or clear input to reset
 
 ### Configuration
 
-Click the settings icon to configure:
+Click the settings icon (gear icon to the right of the search box) to configure:
 - `caseSensitive`: Match exact casing (default: false)
 - `searchInReplies`: Include reply threads (default: true)
 - `searchInAuthorNames`: Match against author field (default: false)

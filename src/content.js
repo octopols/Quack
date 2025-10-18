@@ -71,6 +71,17 @@ function attachEventListeners() {
     });
   }
 
+  // Search button
+  if (ui.searchButton) {
+    ui.searchButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      const query = ui.searchBox.value.trim();
+      if (query) {
+        handleSearch(query);
+      }
+    });
+  }
+
   // Settings button
   if (ui.settingsButton) {
     ui.settingsButton.addEventListener('click', (e) => {
