@@ -2,7 +2,7 @@
   <img src="icon.png" alt="Quack Icon" width="128" height="128">
 </div>
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)
 ![Chrome](https://img.shields.io/badge/Chrome-88%2B-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 

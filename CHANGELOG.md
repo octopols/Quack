@@ -2,7 +2,7 @@
 
 All notable changes to Quack will be documented in this file.
 
-## [Unreleased]
+## [3.0.0] - 2025-10-18
 
 ### Added
 - YouTube-style search icon button with click functionality

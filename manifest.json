@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Quack",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Search through ALL comments on any YouTube video, including paginated comments",
   "author": "Hirnaymay Bhaskar",
   "homepage_url": "https://github.com/yourusername/quack",
@@ -18,7 +18,9 @@
   ],
   "content_scripts": [
     {
-      "matches": ["*://www.youtube.com/watch*"],
+      "matches": [
+        "*://www.youtube.com/watch*"
+      ],
       "js": [
         "src/settings.js",
         "src/parser.js",
@@ -27,7 +29,9 @@
         "src/ui.js",
         "src/content.js"
       ],
-      "css": ["src/styles.css"],
+      "css": [
+        "src/styles.css"
+      ],
       "run_at": "document_end"
     }
   ],
