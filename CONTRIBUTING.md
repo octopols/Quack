@@ -6,6 +6,7 @@
 2. Comment asking to be assigned to work on it
 3. Wait for assignment before starting work
 4. Fork and implement your fix
+5. Submit PR using the provided template
 
 ## Setup
 
@@ -38,30 +39,42 @@ src/
 └── styles.css    # Scoped styling
 ```
 
-## Testing
+## Testing Requirements
 
 1. Load extension in Chrome
-2. Navigate to YouTube video
-3. Verify search functionality
-4. Test settings persistence
-5. Check console for errors
+2. Navigate to YouTube video with comments
+3. Verify search functionality works
+4. Test settings persistence across sessions
+5. Check console for `[CommentSearch]` errors
+6. Test on videos with 1000+ comments
+7. Verify both light/dark theme compatibility
+
+## Performance Testing
+
+Before submitting PR, measure:
+- Memory usage (Chrome Task Manager - Shift+Esc)
+- CPU impact during search operations
+- Search completion time on large comment sets
 
 ## Pull Requests
 
-- Fork repository
-- Create feature branch
-- Test thoroughly
-- Submit PR with clear description
-- Reference issue number if applicable
+- Use issue templates for proper bug reporting
+- Follow PR template checklist completely
+- Test thoroughly before submission
+- Reference related issue number
+- Include screenshots for UI changes
 
-## Debug
+## Debug Tips
 
-Use Chrome DevTools on YouTube pages. Extension logs prefixed with `[CommentSearch]`.
+- Use Chrome DevTools on YouTube pages
+- Extension logs prefixed with `[CommentSearch]`
+- Check `ytInitialData` for comment structure changes
+- Monitor network tab for YouTube API calls
+- Verify manifest.json syntax with `jq`
 
-## Issues
+## Common Issues
 
-Report bugs with:
-- Chrome version
-- Console errors
-- Reproduction steps
-- Expected vs actual behavior
+- Search box not appearing: Check page URL and comments section loading
+- No results: Verify case sensitivity and reply inclusion settings
+- Performance issues: Test on videos with reasonable comment counts
+- Parser errors: YouTube changes comment data structures frequently

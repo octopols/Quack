@@ -1,0 +1,119 @@
+name: Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+      changelog:
+        description: 'Changelog entry (optional)'
+        required: false
+        type: string
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Get current version
+      id: current
+      run: |
+        CURRENT=$(jq -r '.version' manifest.json)
+        echo "version=$CURRENT" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT"
+    
+    - name: Calculate new version
+      id: new
+      run: |
+        CURRENT="${{ steps.current.outputs.version }}"
+        TYPE="${{ github.event.inputs.version_type }}"
+        
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+        
+        case $TYPE in
+          major)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            ;;
+          minor)
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            ;;
+          patch)
+            PATCH=$((PATCH + 1))
+            ;;
+        esac
+        
+        NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "New version: $NEW_VERSION"
+    
+    - name: Update manifest.json
+      run: |
+        jq '.version = "${{ steps.new.outputs.version }}"' manifest.json > manifest.tmp
+        mv manifest.tmp manifest.json
+        echo "Updated manifest.json to version ${{ steps.new.outputs.version }}"
+    
+    - name: Update README badges
+      run: |
+        sed -i 's/version-[0-9]*\.[0-9]*\.[0-9]*-blue/version-${{ steps.new.outputs.version }}-blue/g' README.md
+        echo "Updated README.md version badge"
+    
+    - name: Update changelog
+      run: |
+        if [ -n "${{ github.event.inputs.changelog }}" ]; then
+          # Convert [Unreleased] to [VERSION] and add new [Unreleased] section
+          VERSION="${{ steps.new.outputs.version }}"
+          DATE=$(date +'%Y-%m-%d')
+          
+          # Replace [Unreleased] with [VERSION] - DATE
+          sed -i "s/## \[Unreleased\]/## [${VERSION}] - ${DATE}/" CHANGELOG.md
+          
+          # Add new [Unreleased] section at the top
+          sed -i "/# Changelog/a\\
+\\
+## [Unreleased]\\
+\\
+### Added\\
+${{ github.event.inputs.changelog }}\\
+" CHANGELOG.md
+          
+          echo "Updated CHANGELOG.md"
+        else
+          # Just convert [Unreleased] to [VERSION] without new content
+          VERSION="${{ steps.new.outputs.version }}"
+          DATE=$(date +'%Y-%m-%d')
+          sed -i "s/## \[Unreleased\]/## [${VERSION}] - ${DATE}/" CHANGELOG.md
+          echo "Converted [Unreleased] to [${VERSION}] in CHANGELOG.md"
+        fi
+    
+    - name: Commit changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add manifest.json README.md CHANGELOG.md
+        git commit -m "Bump version to v${{ steps.new.outputs.version }}"
+        git push
+    
+    - name: Create and push tag
+      run: |
+        git tag v${{ steps.new.outputs.version }}
+        git push origin v${{ steps.new.outputs.version }}
+        echo "Created and pushed tag v${{ steps.new.outputs.version }}"

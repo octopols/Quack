@@ -1,0 +1,71 @@
+name: Chrome Web Store Upload
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Extract version from tag
+      id: version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Create clean extension package
+      run: |
+        mkdir -p build
+        
+        # Copy only necessary files for Chrome Web Store
+        cp manifest.json build/
+        cp icon.png build/
+        cp popup.html build/
+        cp -r src/ build/
+        
+        # Create zip package
+        cd build
+        zip -r "../quack-webstore-v${{ steps.version.outputs.version }}.zip" .
+        cd ..
+        
+        echo "Package created: quack-webstore-v${{ steps.version.outputs.version }}.zip"
+        echo "Package size: $(du -h quack-webstore-v${{ steps.version.outputs.version }}.zip | cut -f1)"
+    
+    - name: Validate package
+      run: |
+        # Ensure package is under Chrome Web Store limits (10MB)
+        SIZE=$(stat -f%z "quack-webstore-v${{ steps.version.outputs.version }}.zip" 2>/dev/null || stat -c%s "quack-webstore-v${{ steps.version.outputs.version }}.zip")
+        MAX_SIZE=10485760  # 10MB
+        
+        if [ $SIZE -gt $MAX_SIZE ]; then
+          echo "Package too large: $SIZE bytes (max: $MAX_SIZE)"
+          exit 1
+        fi
+        
+        echo "Package validation passed: $SIZE bytes"
+    
+    - name: Upload to Chrome Web Store
+      uses: mnao305/chrome-extension-upload@v4.0.1
+      with:
+        file-path: quack-webstore-v${{ steps.version.outputs.version }}.zip
+        extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+        client-id: ${{ secrets.CHROME_CLIENT_ID }}
+        client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+        refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        publish: false  # Set to true for auto-publish after upload
+    
+    - name: Create deployment summary
+      run: |
+        echo "## Chrome Web Store Deployment" >> $GITHUB_STEP_SUMMARY
+        echo "- Version: v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Package: quack-webstore-v${{ steps.version.outputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
+        echo "- Status: Uploaded (pending review)" >> $GITHUB_STEP_SUMMARY
+        echo "- Next steps: Manual review and publishing required" >> $GITHUB_STEP_SUMMARY

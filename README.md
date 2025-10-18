@@ -8,6 +8,10 @@
 
 Browser extension for searching through paginated YouTube comments. Fetches and filters all comments on a video, not just the initially loaded subset.
 
+## Download
+
+**Download Quack**: [Latest Release](https://github.com/octopols/quack/releases/latest)
+
 ## Features
 
 - Comprehensive search across all paginated comments
@@ -131,6 +135,14 @@ Data handling:
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution guidelines.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history and detailed changes.
+
+## Release Notes
+
+See [RELEASE.md](RELEASE.md) for comprehensive release information and installation guide.
 
 ## License
 
