@@ -386,12 +386,21 @@ class CommentFetcher {
                              element.querySelector('[aria-label*="like"]');
 
           if (contentElement && contentElement.textContent) {
+            // Try to get profile photo from thumbnail element
+            const thumbnailElement = element.querySelector('#author-thumbnail img') ||
+                                   element.querySelector('yt-img-shadow img') ||
+                                   element.querySelector('[id*="thumbnail"] img');
+            
+            const thumbnailUrl = thumbnailElement?.src || null;
+            const authorThumbnails = thumbnailUrl ? [{ url: thumbnailUrl }] : [];
+            
             const comment = {
               id: element.getAttribute('id') || `dom-${Date.now()}-${Math.random()}`,
               author: authorElement?.textContent?.trim() || 'Unknown',
               text: contentElement.textContent?.trim() || '',
               timestamp: timeElement?.textContent?.trim() || '',
               likes: likesElement?.textContent?.trim() || '0',
+              authorThumbnail: authorThumbnails,
               isReply: false,
               replies: []
             };

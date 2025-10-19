@@ -219,56 +219,57 @@
   font-size: 13px;
 }
 
-/* Comment Results */
-.quack-comment-result {
-  padding: 16px;
-  border-bottom: 1px solid var(--yt-spec-10-percent-layer);
-  background-color: var(--yt-spec-base-background);
-  margin-bottom: 8px;
-  border-radius: 8px;
-  transition: background-color 0.2s;
+/* Search Results Enhancements - Let YouTube's native CSS handle styling */
+.quack-search-active ytd-comment-thread-renderer {
+  animation: quack-fadeIn 0.3s ease-out;
 }
 
-.quack-comment-result:hover {
-  background-color: var(--yt-spec-badge-chip-background);
+/* Ensure buttons in search results work */
+ytd-comment-thread-renderer button {
+  pointer-events: auto !important;
 }
 
-.quack-comment-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+ytd-comment-view-model button {
+  pointer-events: auto !important;
 }
 
-.quack-comment-author {
-  font-weight: 500;
-  color: var(--yt-spec-text-primary);
-  font-size: 13px;
+/* Make sure all YouTube comment components display properly */
+ytd-comment-thread-renderer,
+ytd-comment-view-model,
+ytd-expander,
+ytd-comment-engagement-bar,
+ytd-toggle-button-renderer,
+ytd-button-renderer {
+  display: block !important;
 }
 
-.quack-comment-time {
-  color: var(--yt-spec-text-secondary);
-  font-size: 12px;
+/* Enhance the loading state to not interfere with native elements */
+.quack-loading-indicator {
+  position: relative;
+  z-index: 1;
 }
 
-.quack-comment-text {
-  color: var(--yt-spec-text-primary);
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 8px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+/* Ensure search result comments show full text without truncation */
+.quack-search-active ytd-comment-thread-renderer #expander,
+.quack-search-active ytd-comment-view-model #expander {
+  max-height: none !important;
+  overflow: visible !important;
 }
 
-.quack-comment-footer {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+.quack-search-active ytd-comment-thread-renderer #content-text,
+.quack-search-active ytd-comment-view-model #content-text {
+  max-height: none !important;
+  overflow: visible !important;
+  -webkit-line-clamp: none !important;
+  line-clamp: none !important;
 }
 
-.quack-comment-likes {
-  color: var(--yt-spec-text-secondary);
-  font-size: 12px;
+/* Ensure long comments in search results are fully visible */
+.quack-search-active .yt-core-attributed-string--white-space-pre-wrap {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
 /* Highlight Matches */
@@ -386,6 +387,56 @@ html[dark="true"] .quack-highlight {
   }
 }
 
-.quack-comment-result {
+@keyframes quack-fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.quack-search-active ytd-comment-thread-renderer {
   animation: quack-fadeIn 0.3s ease-out;
+}
+
+/* Keyboard navigation focus styling */
+.quack-comment-focused {
+  outline: 2px solid var(--yt-spec-call-to-action) !important;
+  outline-offset: 4px !important;
+  border-radius: 8px !important;
+}
+
+/* Context menu styling */
+.quack-context-menu {
+  font-family: "Roboto", "Arial", sans-serif;
+}
+
+.quack-context-menu-item:hover {
+  background-color: var(--yt-spec-badge-chip-background) !important;
+}
+
+/* Reply dialog styling */
+.quack-reply-dialog {
+  font-family: "Roboto", "Arial", sans-serif;
+}
+
+.quack-reply-input:focus {
+  border-color: var(--yt-spec-call-to-action) !important;
+  box-shadow: 0 0 0 2px rgba(6, 95, 212, 0.2) !important;
+}
+
+.quack-reply-cancel:hover {
+  background-color: var(--yt-spec-badge-chip-background) !important;
+}
+
+.quack-reply-submit:hover {
+  background-color: #0553d1 !important;
+}
+
+.quack-reply-submit:disabled {
+  background-color: var(--yt-spec-text-disabled) !important;
+  cursor: not-allowed !important;
 }

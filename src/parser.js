@@ -62,12 +62,22 @@ function extractText(textObj) {
  */
 function parseCommentRenderer(renderer) {
   try {
+    // Extract author thumbnail with multiple fallback paths
+    let authorThumbnail = [];
+    if (renderer.authorThumbnail?.thumbnails) {
+      authorThumbnail = renderer.authorThumbnail.thumbnails;
+    } else if (renderer.authorThumbnail) {
+      // Sometimes it's directly an array
+      authorThumbnail = Array.isArray(renderer.authorThumbnail) ? renderer.authorThumbnail : [renderer.authorThumbnail];
+    }
+    
     const comment = {
       id: renderer.commentId || '',
       author: extractText(renderer.authorText),
       text: extractText(renderer.contentText),
       timestamp: extractText(renderer.publishedTimeText),
       likes: extractText(renderer.voteCount) || '0',
+      authorThumbnail: authorThumbnail,
       isReply: false,
       replies: []
     };
@@ -91,12 +101,27 @@ function parseCommentRenderer(renderer) {
  */
 function parseCommentViewModel(viewModel) {
   try {
+    // Extract author thumbnail with comprehensive fallback paths
+    let authorThumbnail = [];
+    const author = viewModel.author || {};
+    
+    if (author.avatar?.image?.sources) {
+      authorThumbnail = author.avatar.image.sources;
+    } else if (author.avatarThumbnails) {
+      authorThumbnail = author.avatarThumbnails;
+    } else if (author.thumbnail?.thumbnails) {
+      authorThumbnail = author.thumbnail.thumbnails;
+    } else if (viewModel.authorThumbnail) {
+      authorThumbnail = Array.isArray(viewModel.authorThumbnail) ? viewModel.authorThumbnail : [viewModel.authorThumbnail];
+    }
+    
     const comment = {
       id: viewModel.commentId || viewModel.commentKey || '',
-      author: viewModel.author?.displayName || '',
+      author: author.displayName || '',
       text: viewModel.content?.text || viewModel.content?.content || '',
       timestamp: viewModel.publishedTime || '',
       likes: viewModel.likeCount?.toString() || '0',
+      authorThumbnail: authorThumbnail,
       isReply: false,
       replies: []
     };
@@ -124,12 +149,25 @@ function parseCommentEntity(entity) {
     const author = entity.author || {};
     const toolbar = entity.toolbar || {};
     
+    // Extract author thumbnail with comprehensive fallback paths
+    let authorThumbnail = [];
+    if (author.avatarThumbnails) {
+      authorThumbnail = author.avatarThumbnails;
+    } else if (author.avatar?.image?.sources) {
+      authorThumbnail = author.avatar.image.sources;
+    } else if (author.thumbnail?.thumbnails) {
+      authorThumbnail = author.thumbnail.thumbnails;
+    } else if (properties.authorThumbnail) {
+      authorThumbnail = Array.isArray(properties.authorThumbnail) ? properties.authorThumbnail : [properties.authorThumbnail];
+    }
+    
     const comment = {
       id: properties.commentId || '',
       author: author.displayName || '',
       text: properties.content?.content || '',
       timestamp: properties.publishedTime || '',
       likes: toolbar.likeCountNotliked?.trim() || '0',
+      authorThumbnail: authorThumbnail,
       isReply: false,
       replies: []
     };

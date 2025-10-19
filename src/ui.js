@@ -22,6 +22,44 @@ class CommentSearchUI {
     this.findCommentsSection();
     this.createSearchBox();
     this.createSettingsPopup();
+    this.setupGlobalClickHandlers();
+  }
+
+  /**
+   * Set up global click handlers as backup for button interactions
+   */
+  setupGlobalClickHandlers() {
+    // Set up keyboard navigation
+    this.setupKeyboardNavigation();
+    
+    // Set up copy functionality
+    this.setupCopyFunctionality();
+    
+    // Use document-level event delegation for like buttons
+    document.addEventListener('click', (e) => {
+      const target = e.target;
+      
+      // Check if clicked element is within a like button
+      const likeButton = target.closest('#like-button');
+      if (likeButton) {
+        const commentElement = target.closest('ytd-comment-thread-renderer[data-comment-id]');
+        if (commentElement) {
+          console.log('[UI] Global click handler - Like button clicked');
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          const commentId = commentElement.getAttribute('data-comment-id');
+          const commentAuthor = commentElement.getAttribute('data-comment-author');
+          const buttonElement = likeButton.querySelector('button');
+          
+          if (buttonElement) {
+            this.handleLikeClick(buttonElement, likeButton, { id: commentId, author: commentAuthor });
+          }
+          return false;
+        }
+      }
+    }, true); // Use capture phase to intercept before YouTube's handlers
   }
 
   /**
@@ -209,6 +247,12 @@ class CommentSearchUI {
     // Create loading indicator
     this.createLoadingIndicator();
     this.disableSearch();
+    
+    // Add search active class
+    if (this.commentsSection) {
+      this.commentsSection.classList.add('quack-search-active');
+    }
+    
     this.isSearchActive = true;
   }
 
@@ -257,6 +301,640 @@ class CommentSearchUI {
   }
 
   /**
+   * Set up keyboard navigation for search results
+   */
+  setupKeyboardNavigation() {
+    document.addEventListener('keydown', (e) => {
+      // Only handle keys when search is active and not typing in input
+      if (!this.isSearchActive || e.target === this.searchBox) return;
+      
+      const comments = document.querySelectorAll('.quack-search-active ytd-comment-thread-renderer');
+      if (comments.length === 0) return;
+      
+      const currentFocused = document.querySelector('.quack-comment-focused');
+      let currentIndex = -1;
+      
+      if (currentFocused) {
+        currentIndex = Array.from(comments).indexOf(currentFocused);
+      }
+      
+      switch (e.key) {
+        case 'ArrowDown':
+        case 'j': // Vim-style navigation
+          e.preventDefault();
+          this.focusComment(comments, Math.min(currentIndex + 1, comments.length - 1));
+          break;
+        case 'ArrowUp':
+        case 'k': // Vim-style navigation
+          e.preventDefault();
+          this.focusComment(comments, Math.max(currentIndex - 1, 0));
+          break;
+        case 'l': // Like current comment
+          e.preventDefault();
+          if (currentFocused) {
+            const likeButton = currentFocused.querySelector('#like-button button');
+            if (likeButton) likeButton.click();
+          }
+          break;
+        case 'c': // Copy current comment
+          e.preventDefault();
+          if (currentFocused) {
+            this.copyCommentText(currentFocused);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          this.clearCommentFocus();
+          break;
+      }
+    });
+  }
+
+  /**
+   * Focus a specific comment in the results
+   * @param {NodeList} comments - List of comment elements
+   * @param {number} index - Index to focus
+   */
+  focusComment(comments, index) {
+    // Remove previous focus
+    this.clearCommentFocus();
+    
+    if (index >= 0 && index < comments.length) {
+      const comment = comments[index];
+      comment.classList.add('quack-comment-focused');
+      comment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  /**
+   * Clear comment focus
+   */
+  clearCommentFocus() {
+    const focused = document.querySelectorAll('.quack-comment-focused');
+    focused.forEach(el => el.classList.remove('quack-comment-focused'));
+  }
+
+  /**
+   * Set up copy functionality for comments
+   */
+  setupCopyFunctionality() {
+    document.addEventListener('contextmenu', (e) => {
+      const commentElement = e.target.closest('ytd-comment-thread-renderer[data-comment-id]');
+      if (commentElement && this.isSearchActive) {
+        e.preventDefault();
+        this.showCommentContextMenu(e, commentElement);
+      }
+    });
+  }
+
+  /**
+   * Show context menu for comment
+   * @param {Event} e - Context menu event
+   * @param {HTMLElement} commentElement - Comment element
+   */
+  showCommentContextMenu(e, commentElement) {
+    // Create context menu
+    const menu = document.createElement('div');
+    menu.className = 'quack-context-menu';
+    menu.style.cssText = `
+      position: fixed;
+      top: ${e.clientY}px;
+      left: ${e.clientX}px;
+      background: var(--yt-spec-menu-background);
+      border: 1px solid var(--yt-spec-10-percent-layer);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      z-index: 10000;
+      min-width: 150px;
+    `;
+    
+    const options = [
+      { text: 'Copy comment text', action: () => this.copyCommentText(commentElement) },
+      { text: 'Copy comment link', action: () => this.copyCommentLink(commentElement) },
+      { text: 'Go to author channel', action: () => this.goToAuthorChannel(commentElement) }
+    ];
+    
+    options.forEach(option => {
+      const item = document.createElement('div');
+      item.className = 'quack-context-menu-item';
+      item.textContent = option.text;
+      item.style.cssText = `
+        padding: 12px;
+        cursor: pointer;
+        color: var(--yt-spec-text-primary);
+        font-size: 14px;
+        border-radius: 4px;
+        margin: 4px;
+      `;
+      
+      item.addEventListener('mouseenter', () => {
+        item.style.backgroundColor = 'var(--yt-spec-badge-chip-background)';
+      });
+      
+      item.addEventListener('mouseleave', () => {
+        item.style.backgroundColor = '';
+      });
+      
+      item.addEventListener('click', () => {
+        option.action();
+        document.body.removeChild(menu);
+      });
+      
+      menu.appendChild(item);
+    });
+    
+    document.body.appendChild(menu);
+    
+    // Remove menu when clicking elsewhere
+    setTimeout(() => {
+      document.addEventListener('click', () => {
+        if (document.body.contains(menu)) {
+          document.body.removeChild(menu);
+        }
+      }, { once: true });
+    }, 100);
+  }
+
+  /**
+   * Copy comment text to clipboard
+   * @param {HTMLElement} commentElement - Comment element
+   */
+  async copyCommentText(commentElement) {
+    const textElement = commentElement.querySelector('#content-text');
+    if (textElement) {
+      try {
+        await navigator.clipboard.writeText(textElement.textContent);
+        this.showToast('Comment text copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy text:', err);
+        this.showToast('Failed to copy text', 'error');
+      }
+    }
+  }
+
+  /**
+   * Copy comment link to clipboard
+   * @param {HTMLElement} commentElement - Comment element
+   */
+  async copyCommentLink(commentElement) {
+    const commentId = commentElement.getAttribute('data-comment-id');
+    const videoId = new URLSearchParams(window.location.search).get('v');
+    
+    if (commentId && videoId) {
+      const link = `${window.location.origin}/watch?v=${videoId}&lc=${commentId}`;
+      try {
+        await navigator.clipboard.writeText(link);
+        this.showToast('Comment link copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+        this.showToast('Failed to copy link', 'error');
+      }
+    }
+  }
+
+  /**
+   * Navigate to author's channel
+   * @param {HTMLElement} commentElement - Comment element
+   */
+  goToAuthorChannel(commentElement) {
+    const authorName = commentElement.getAttribute('data-comment-author');
+    if (authorName) {
+      // Try to find existing author link in DOM first
+      const authorLink = commentElement.querySelector('#author-text');
+      if (authorLink && authorLink.href && authorLink.href !== '#') {
+        window.open(authorLink.href, '_blank');
+      } else {
+        // Fallback: search for the author
+        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(authorName)}`;
+        window.open(searchUrl, '_blank');
+      }
+    }
+  }
+
+  /**
+   * Show toast notification
+   * @param {string} message - Message to show
+   * @param {string} type - Type of toast (info, error)
+   */
+  showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `quack-toast quack-toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${type === 'error' ? '#f44336' : '#4caf50'};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      z-index: 10001;
+      font-size: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      animation: quack-fadeIn 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.animation = 'quack-fadeOut 0.3s ease-out';
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
+  }
+
+
+
+
+
+  /**
+   * Create a native YouTube comment element using the actual YT structure
+   * @param {Object} comment - Comment object
+   * @param {string} query - Search query for highlighting
+   * @param {Object} searcher - Searcher instance for highlighting
+   * @returns {HTMLElement} Comment element
+   */
+  createNativeCommentElement(comment, query, searcher) {
+    // Create the main comment thread container
+    const commentThread = document.createElement('ytd-comment-thread-renderer');
+    commentThread.className = 'style-scope ytd-item-section-renderer';
+    commentThread.setAttribute('use-small-avatars', '');
+    
+            const profilePhotoUrl = 'https://yt3.googleusercontent.com/a/default-user=s88-c-k-c0x00ffffff-no-rj';
+    const highlightedText = searcher.highlightMatches(comment.text, query);
+    const highlightedAuthor = searcher.settings.searchInAuthorNames 
+      ? searcher.highlightMatches(comment.author, query)
+      : searcher.escapeHtml(comment.author);
+    
+    // Use the exact YouTube comment structure from your example
+    commentThread.innerHTML = `
+      <div id="comment-container" class="style-scope ytd-comment-thread-renderer">
+        <div class="threadline style-scope ytd-comment-thread-renderer" hidden=""><div class="continuation style-scope ytd-comment-thread-renderer"></div></div>
+        <div class="removed-placeholder style-scope ytd-comment-thread-renderer" hidden=""></div>
+        <ytd-comment-view-model id="comment" class="style-scope ytd-comment-thread-renderer" use-small-avatars="" web-watch-compact-comments="" optimal-reading-width-comments="">
+          <div id="paid-comment-background" class="style-scope ytd-comment-view-model"></div>
+          <div id="linked-comment-badge" class="style-scope ytd-comment-view-model"></div>
+          
+          <div id="body" class="style-scope ytd-comment-view-model">
+            <div id="author-thumbnail" class="style-scope ytd-comment-view-model">
+              <button id="author-thumbnail-button" class="style-scope ytd-comment-view-model" aria-label="${searcher.escapeHtml(comment.author)}">
+                <yt-img-shadow fit="" height="40" width="40" class="style-scope ytd-comment-view-model no-transition" style="background-color: transparent;" loaded="">
+                  <img id="img" draggable="false" class="style-scope yt-img-shadow" alt="" height="40" width="40" src="${profilePhotoUrl}">
+                </yt-img-shadow>
+              </button>
+            </div>
+            <div id="main" class="style-scope ytd-comment-view-model">
+              <div id="header" class="style-scope ytd-comment-view-model">
+                <div id="pinned-comment-badge" class="style-scope ytd-comment-view-model"></div>
+                <div id="header-author" class="style-scope ytd-comment-view-model">
+                  <h3 class="style-scope ytd-comment-view-model">
+                    <a id="author-text" class="yt-simple-endpoint style-scope ytd-comment-view-model" href="#">
+                      <span class="style-scope ytd-comment-view-model">${highlightedAuthor}</span>
+                    </a>
+                  </h3>
+                  <span id="author-comment-badge" class="style-scope ytd-comment-view-model"></span>
+                  <span id="sponsor-comment-badge" class="style-scope ytd-comment-view-model"></span>
+                  <span dir="auto" id="published-time-text" class="style-scope ytd-comment-view-model">
+                    <a class="yt-simple-endpoint style-scope ytd-comment-view-model" href="#">
+                      ${searcher.escapeHtml(comment.timestamp)}
+                    </a>
+                  </span>
+                </div>
+              </div>
+              
+              <div id="expander" class="style-scope ytd-comment-view-model">
+                <div id="content" class="style-scope ytd-comment-view-model">
+                  <yt-attributed-string id="content-text" class="style-scope ytd-comment-view-model">
+                    <span class="yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap" dir="auto" role="text">${highlightedText}</span>
+                  </yt-attributed-string>
+                </div>
+              </div>
+              
+              <ytd-comment-engagement-bar id="action-buttons" class="style-scope ytd-comment-view-model">
+                <div id="toolbar" class="style-scope ytd-comment-engagement-bar">
+                  <ytd-toggle-button-renderer id="like-button" button-tooltip-position="bottom" icon-size="16" class="style-scope ytd-comment-engagement-bar" button-renderer="true">
+                    <yt-button-shape>
+                      <button class="yt-spec-button-shape-next yt-spec-button-shape-next--text yt-spec-button-shape-next--mono yt-spec-button-shape-next--size-s yt-spec-button-shape-next--icon-button yt-spec-button-shape-next--enable-backdrop-filter-experiment" aria-pressed="false" aria-label="Like this comment" aria-disabled="false">
+                        <div aria-hidden="true" class="yt-spec-button-shape-next__icon">
+                          <span class="ytIconWrapperHost" style="width: 16px; height: 16px;">
+                            <span class="yt-icon-shape ytSpecIconShapeHost">
+                              <div style="width: 100%; height: 100%; display: block; fill: currentcolor;">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;">
+                                  <path d="M9.221 1.795a1 1 0 011.109-.656l1.04.173a4 4 0 013.252 4.784L14 9h4.061a3.664 3.664 0 013.576 2.868A3.68 3.68 0 0121 14.85l.02.087A3.815 3.815 0 0120 18.5v.043l-.01.227a2.82 2.82 0 01-.135.663l-.106.282A3.754 3.754 0 0116.295 22h-3.606l-.392-.007a12.002 12.002 0 01-5.223-1.388l-.343-.189-.27-.154a2.005 2.005 0 00-.863-.26l-.13-.004H3.5a1.5 1.5 0 01-1.5-1.5V12.5A1.5 1.5 0 013.5 11h1.79l.157-.013a1 1 0 00.724-.512l.063-.145 2.987-8.535Zm-1.1 9.196A3 3 0 015.29 13H4v4.998h1.468a4 4 0 011.986.528l.27.155.285.157A10 10 0 0012.69 20h3.606c.754 0 1.424-.483 1.663-1.2l.03-.126a.819.819 0 00.012-.131v-.872l.587-.586c.388-.388.577-.927.523-1.465l-.038-.23-.02-.087-.21-.9.55-.744A1.663 1.663 0 0018.061 11H14a2.002 2.002 0 01-1.956-2.418l.623-2.904a2 2 0 00-1.626-2.392l-.21-.035-2.71 7.741Z"></path>
+                                </svg>
+                              </div>
+                            </span>
+                          </span>
+                        </div>
+                        <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
+                          <div class="yt-spec-touch-feedback-shape__stroke"></div>
+                          <div class="yt-spec-touch-feedback-shape__fill"></div>
+                        </yt-touch-feedback-shape>
+                      </button>
+                    </yt-button-shape>
+                  </ytd-toggle-button-renderer>
+                  <span id="vote-count-middle" class="style-scope ytd-comment-engagement-bar">
+                    ${searcher.escapeHtml(comment.likes)}
+                  </span>
+                  
+                  <ytd-button-renderer id="reply-button-end" force-icon-button="true" class="style-scope ytd-comment-engagement-bar" button-renderer="" button-next="">
+                    <yt-button-shape>
+                      <button class="yt-spec-button-shape-next yt-spec-button-shape-next--text yt-spec-button-shape-next--mono yt-spec-button-shape-next--size-s yt-spec-button-shape-next--enable-backdrop-filter-experiment" aria-label="Reply">
+                        <div class="yt-spec-button-shape-next__button-text-content">
+                          <span class="yt-core-attributed-string yt-core-attributed-string--white-space-no-wrap" role="text">Reply</span>
+                        </div>
+                        <yt-touch-feedback-shape aria-hidden="true" class="yt-spec-touch-feedback-shape yt-spec-touch-feedback-shape--touch-response">
+                          <div class="yt-spec-touch-feedback-shape__stroke"></div>
+                          <div class="yt-spec-touch-feedback-shape__fill"></div>
+                        </yt-touch-feedback-shape>
+                      </button>
+                    </yt-button-shape>
+                  </ytd-button-renderer>
+                </div>
+              </ytd-comment-engagement-bar>
+            </div>
+          </div>
+        </ytd-comment-view-model>
+      </div>
+    `;
+    
+    return commentThread;
+  }
+
+  /**
+   * Show reply dialog for a comment
+   * @param {HTMLElement} commentElement - Comment element
+   * @param {Object} comment - Comment data
+   */
+  showReplyDialog(commentElement, comment) {
+    // Check if reply dialog already exists
+    const existingDialog = commentElement.querySelector('.quack-reply-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+      return;
+    }
+    
+    const replyDialog = document.createElement('div');
+    replyDialog.className = 'quack-reply-dialog';
+    replyDialog.style.cssText = `
+      margin-top: 12px;
+      padding: 16px;
+      background: var(--yt-spec-badge-chip-background);
+      border-radius: 8px;
+      border-left: 3px solid var(--yt-spec-call-to-action);
+    `;
+    
+    replyDialog.innerHTML = `
+      <div style="margin-bottom: 12px; font-size: 14px; color: var(--yt-spec-text-secondary);">
+        Replying to ${comment.author}
+      </div>
+      <textarea 
+        class="quack-reply-input" 
+        placeholder="Add a reply..." 
+        style="
+          width: 100%; 
+          min-height: 80px; 
+          padding: 12px; 
+          border: 1px solid var(--yt-spec-10-percent-layer);
+          border-radius: 8px;
+          background: var(--yt-spec-base-background);
+          color: var(--yt-spec-text-primary);
+          font-family: Roboto, Arial, sans-serif;
+          font-size: 14px;
+          resize: vertical;
+          outline: none;
+        "
+      ></textarea>
+      <div style="margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end;">
+        <button class="quack-reply-cancel" style="
+          padding: 8px 16px;
+          border: none;
+          border-radius: 4px;
+          background: transparent;
+          color: var(--yt-spec-text-secondary);
+          cursor: pointer;
+          font-size: 14px;
+        ">Cancel</button>
+        <button class="quack-reply-submit" style="
+          padding: 8px 16px;
+          border: none;
+          border-radius: 4px;
+          background: var(--yt-spec-call-to-action);
+          color: white;
+          cursor: pointer;
+          font-size: 14px;
+        ">Reply</button>
+      </div>
+    `;
+    
+    // Add event listeners
+    const cancelBtn = replyDialog.querySelector('.quack-reply-cancel');
+    const submitBtn = replyDialog.querySelector('.quack-reply-submit');
+    const textarea = replyDialog.querySelector('.quack-reply-input');
+    
+    cancelBtn.addEventListener('click', () => replyDialog.remove());
+    
+    submitBtn.addEventListener('click', () => {
+      const replyText = textarea.value.trim();
+      if (replyText) {
+        this.showToast('Reply functionality is read-only in search results', 'info');
+        replyDialog.remove();
+      }
+    });
+    
+    // Focus textarea
+    setTimeout(() => textarea.focus(), 100);
+    
+    // Insert after the comment content
+    const insertPoint = commentElement.querySelector('#action-buttons') || commentElement.querySelector('.ytd-comment-engagement-bar');
+    if (insertPoint) {
+      insertPoint.parentNode.insertBefore(replyDialog, insertPoint.nextSibling);
+    }
+  }
+
+  /**
+   * Add invisible overlays over like buttons for reliable clicking
+   * @param {HTMLElement} commentElement - The comment element
+   * @param {Object} comment - Comment data
+   */
+  addButtonOverlays(commentElement, comment) {
+    const likeButton = commentElement.querySelector('#like-button');
+
+    
+    if (likeButton) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        cursor: pointer;
+        background: transparent;
+      `;
+      overlay.addEventListener('click', (e) => {
+        console.log('[UI] Overlay click - Like button');
+        e.preventDefault();
+        e.stopPropagation();
+        const buttonElement = likeButton.querySelector('button');
+        if (buttonElement) {
+          this.handleLikeClick(buttonElement, likeButton, comment);
+        }
+      });
+      
+      likeButton.style.position = 'relative';
+      likeButton.appendChild(overlay);
+    }
+    
+
+  }
+
+  /**
+   * Set up interactions for a comment element to make buttons work
+   * @param {HTMLElement} commentElement - The comment element
+   * @param {Object} comment - Comment data
+   */
+  setupCommentInteractions(commentElement, comment) {
+    console.log('[DEBUG] Setting up interactions for comment:', comment.id);
+    
+    // Handle like button click - more robust event handling
+    const likeButton = commentElement.querySelector('#like-button button');
+    const likeButtonRenderer = commentElement.querySelector('#like-button');
+    
+    console.log('[DEBUG] Found like button:', !!likeButton, 'renderer:', !!likeButtonRenderer);
+    
+    if (likeButton) {
+      // Try multiple event attachment methods
+      
+      // Method 1: Direct event listener with capture
+      likeButton.addEventListener('click', (e) => {
+        console.log('[DEBUG] Like button clicked - direct listener');
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        this.handleLikeClick(likeButton, likeButtonRenderer, comment);
+      }, true);
+      
+      // Method 2: Replace the button entirely
+      const newLikeButton = likeButton.cloneNode(true);
+      likeButton.parentNode.replaceChild(newLikeButton, likeButton);
+      
+      newLikeButton.addEventListener('click', (e) => {
+        console.log('[DEBUG] New like button clicked');
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        this.handleLikeClick(newLikeButton, likeButtonRenderer, comment);
+        return false;
+      }, true);
+      
+      // Also handle keyboard activation
+      newLikeButton.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.handleLikeClick(newLikeButton, likeButtonRenderer, comment);
+        }
+      });
+    }
+    
+    console.log('[UI] Dislike functionality removed - only like button available');
+    
+    // Handle reply button click - show reply box
+    const replyButton = commentElement.querySelector('#reply-button-end button');
+    if (replyButton) {
+      replyButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showReplyDialog(commentElement, comment);
+      });
+    }
+    
+    // Handle author name click - go to channel
+    const authorLink = commentElement.querySelector('#author-text');
+    if (authorLink) {
+      authorLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.goToAuthorChannel(commentElement);
+      });
+    }
+    
+    // Handle author thumbnail click - go to channel
+    const authorThumbnail = commentElement.querySelector('#author-thumbnail-button');
+    if (authorThumbnail) {
+      authorThumbnail.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.goToAuthorChannel(commentElement);
+      });
+    }
+    
+    // Handle timestamp click - copy permalink
+    const timestamp = commentElement.querySelector('#published-time-text a');
+    if (timestamp) {
+      timestamp.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.copyCommentLink(commentElement);
+        this.showToast('Comment link copied!');
+      });
+    }
+  }
+
+  /**
+   * Handle like button click
+   * @param {HTMLElement} button - The like button element
+   * @param {HTMLElement} renderer - The button renderer element
+   * @param {Object} comment - Comment data
+   */
+  handleLikeClick(button, renderer, comment) {
+    console.log('[UI] Like button clicked for comment:', comment.id, comment.author);
+    
+    // Toggle liked state visually
+    const isLiked = button.getAttribute('aria-pressed') === 'true';
+    const newState = !isLiked;
+    
+    button.setAttribute('aria-pressed', newState.toString());
+    
+    // Update visual state with YouTube's styling
+    if (newState) {
+      // Liked state - use YouTube's exact blue color
+      button.style.color = '#065fd4 !important';
+      button.setAttribute('aria-label', 'Remove like from this comment');
+      if (renderer) {
+        renderer.setAttribute('toggled', '');
+        renderer.classList.add('style-default-active');
+      }
+      // Update the icon color specifically
+      const icon = button.querySelector('svg');
+      if (icon) icon.style.fill = '#065fd4';
+    } else {
+      // Not liked state
+      button.style.color = '';
+      button.setAttribute('aria-label', 'Like this comment');
+      if (renderer) {
+        renderer.removeAttribute('toggled');
+        renderer.classList.remove('style-default-active');
+      }
+      // Reset icon color
+      const icon = button.querySelector('svg');
+      if (icon) icon.style.fill = '';
+    }
+    
+    // Visual feedback animation
+    button.style.transform = 'scale(0.9)';
+    button.style.transition = 'transform 0.1s ease';
+    setTimeout(() => {
+      button.style.transform = '';
+    }, 100);
+    
+    // Show user feedback
+    console.log(`[UI] Comment ${newState ? 'liked' : 'unliked'}:`, comment.author);
+  }
+
+
+
+  /**
    * Add a comment to the results
    * @param {Object} comment - Comment object
    * @param {string} query - Search query for highlighting
@@ -265,26 +943,22 @@ class CommentSearchUI {
     const contentsContainer = this.commentsSection.querySelector('#contents');
     if (!contentsContainer) return;
 
-    // Create comment element
-    const commentElement = document.createElement('div');
-    commentElement.className = 'quack-comment-result';
+    // Create native-looking comment element
+    const commentElement = this.createNativeCommentElement(comment, query, searcher);
     
-    const highlightedText = searcher.highlightMatches(comment.text, query);
-    const highlightedAuthor = searcher.settings.searchInAuthorNames 
-      ? searcher.highlightMatches(comment.author, query)
-      : searcher.escapeHtml(comment.author);
-
-    commentElement.innerHTML = `
-      <div class="quack-comment-header">
-        <span class="quack-comment-author">${highlightedAuthor}</span>
-        <span class="quack-comment-time">${searcher.escapeHtml(comment.timestamp)}</span>
-      </div>
-      <div class="quack-comment-text">${highlightedText}</div>
-      <div class="quack-comment-footer">
-        <span class="quack-comment-likes">👍 ${searcher.escapeHtml(comment.likes)}</span>
-      </div>
-    `;
-
+    // Add some additional styling to make it blend better
+    commentElement.style.marginBottom = '16px';
+    
+    // Add a data attribute to track this comment
+    commentElement.setAttribute('data-comment-id', comment.id);
+    commentElement.setAttribute('data-comment-author', comment.author);
+    
+    // Set up event handlers for native-like behavior
+    this.setupCommentInteractions(commentElement, comment);
+    
+    // Add invisible click overlays for better button interaction
+    this.addButtonOverlays(commentElement, comment);
+    
     // Insert before loading indicator if it exists, otherwise append
     if (this.loadingIndicator) {
       contentsContainer.insertBefore(commentElement, this.loadingIndicator);
@@ -307,6 +981,7 @@ class CommentSearchUI {
       this.showResultsCount(matchCount);
     }
 
+    // Keep search active class since we're showing search results
     this.isSearchActive = false;
   }
 
@@ -368,6 +1043,11 @@ class CommentSearchUI {
     this.restoreOriginalComments();
     this.hideLoadingIndicator();
     this.enableSearch();
+    
+    // Remove search active class
+    if (this.commentsSection) {
+      this.commentsSection.classList.remove('quack-search-active');
+    }
   }
 
   /**
@@ -419,6 +1099,18 @@ class CommentSearchUI {
 
     contentsContainer.appendChild(errorElement);
     this.enableSearch();
+    
+    // Remove search active class
+    if (this.commentsSection) {
+      this.commentsSection.classList.remove('quack-search-active');
+    }
+    
+    
+    // Remove search active class
+    if (this.commentsSection) {
+      this.commentsSection.classList.remove('quack-search-active');
+    }
+    
     this.isSearchActive = false;
   }
 }
