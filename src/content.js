@@ -1,4 +1,10 @@
 // Content Script - Main Entry Point
+console.log('[Quack] Content script loaded on:', location.href);
+
+// Check if we're on a YouTube watch page
+function isYouTubeWatchPage() {
+  return location.pathname === '/watch' && location.search.includes('v=');
+}
 
 // Global instances
 let ui = null;
@@ -135,20 +141,8 @@ function attachEventListeners() {
     }
   });
 
-  // Handle YouTube navigation (SPA)
-  let lastUrl = location.href;
-  new MutationObserver(() => {
-    const url = location.href;
-    if (url !== lastUrl) {
-      lastUrl = url;
-      if (url.includes('/watch')) {
-        setTimeout(() => {
-          handleClearSearch();
-          init();
-        }, 1000);
-      }
-    }
-  }).observe(document, { subtree: true, childList: true });
+  // Handle YouTube navigation (SPA) with multiple detection methods
+  setupNavigationDetection();
 }
 
 
@@ -261,9 +255,49 @@ function waitForElement(selector, timeout = 5000) {
 }
 
 
-function isYouTubeWatchPage() {
-  return window.location.hostname === 'www.youtube.com' && 
-         window.location.pathname === '/watch';
+
+
+function setupNavigationDetection() {
+  let lastUrl = location.href;
+  
+  // Intercept History API calls (catches YouTube SPA navigation)
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+  
+  history.pushState = function(...args) {
+    originalPushState.apply(this, args);
+    setTimeout(checkForNavigation, 100);
+  };
+  
+  history.replaceState = function(...args) {
+    originalReplaceState.apply(this, args);
+    setTimeout(checkForNavigation, 100);
+  };
+  
+  // Listen for popstate events
+  window.addEventListener('popstate', () => {
+    setTimeout(checkForNavigation, 100);
+  });
+  
+  function checkForNavigation() {
+    const currentUrl = location.href;
+    
+    if (currentUrl !== lastUrl && isYouTubeWatchPage()) {
+      // Navigated to a watch page, initialize
+      handleClearSearch();
+      setTimeout(() => {
+        init();
+      }, 1000);
+      lastUrl = currentUrl;
+    } else if (currentUrl !== lastUrl) {
+      lastUrl = currentUrl;
+    }
+  }
+}
+
+function getVideoIdFromUrl(url) {
+  const match = url.match(/[?&]v=([^&]+)/);
+  return match ? match[1] : null;
 }
 
 // Initialize when page is ready
@@ -272,9 +306,11 @@ if (document.readyState === 'loading') {
     if (isYouTubeWatchPage()) {
       setTimeout(init, 1000);
     }
+    setupNavigationDetection();
   });
 } else {
   if (isYouTubeWatchPage()) {
     setTimeout(init, 1000);
   }
+  setupNavigationDetection();
 }
