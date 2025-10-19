@@ -1,7 +1,4 @@
-/**
- * Content Script - Main Entry Point
- * Orchestrates all modules and handles user interactions
- */
+// Content Script - Main Entry Point
 
 // Global instances
 let ui = null;
@@ -9,12 +6,8 @@ let fetcher = null;
 let searcher = null;
 let currentSearchQuery = '';
 
-/**
- * Initialize the extension
- */
-async function init() {
-  console.log('[CommentSearch] Initializing extension...');
 
+async function init() {
   try {
     // Wait for YouTube page to be ready
     await waitForElement('ytd-comments-header-renderer', 10000);
@@ -39,16 +32,12 @@ async function init() {
 
     // Attach event listeners
     attachEventListeners();
-
-    console.log('[CommentSearch] Extension initialized successfully');
   } catch (error) {
-    console.error('[CommentSearch] Initialization error:', error);
+    // Initialization failed, extension won't work
   }
 }
 
-/**
- * Attach event listeners to UI elements
- */
+
 function attachEventListeners() {
   // Search box - Enter key
   if (ui.searchBox) {
@@ -153,7 +142,6 @@ function attachEventListeners() {
     if (url !== lastUrl) {
       lastUrl = url;
       if (url.includes('/watch')) {
-        console.log('[CommentSearch] YouTube navigation detected, reinitializing...');
         setTimeout(() => {
           handleClearSearch();
           init();
@@ -163,18 +151,12 @@ function attachEventListeners() {
   }).observe(document, { subtree: true, childList: true });
 }
 
-/**
- * Handle search operation
- * @param {string} query - Search query
- */
+
 async function handleSearch(query) {
   // Prevent search if already in progress
   if (ui.isSearchActive) {
-    console.log('[CommentSearch] Search already in progress, ignoring new request');
     return;
   }
-
-  console.log('[CommentSearch] Starting search for:', query);
   currentSearchQuery = query;
 
   // Abort any ongoing fetch
@@ -211,13 +193,8 @@ async function handleSearch(query) {
     // Show final results
     ui.showFinalResults(matchCount);
 
-    console.log(`[CommentSearch] Search complete. Found ${matchCount} matches.`);
-
   } catch (error) {
-    console.error('[CommentSearch] Search error:', error);
-    
     // Try fallback to DOM extraction
-    console.log('[CommentSearch] Attempting DOM extraction fallback...');
     try {
       const domComments = fetcher.extractCommentsFromDOM();
       const matches = searcher.filterComments(domComments, query);
@@ -233,17 +210,13 @@ async function handleSearch(query) {
       ui.showError('Could not load all comments. Showing visible comments only.');
       
     } catch (fallbackError) {
-      console.error('[CommentSearch] Fallback also failed:', fallbackError);
       ui.showError('Failed to search comments. Please try again.');
     }
   }
 }
 
-/**
- * Handle clear search operation
- */
+
 function handleClearSearch() {
-  console.log('[CommentSearch] Clearing search');
   currentSearchQuery = '';
   
   if (fetcher) {
@@ -259,12 +232,7 @@ function handleClearSearch() {
   }
 }
 
-/**
- * Wait for an element to appear in the DOM
- * @param {string} selector - CSS selector
- * @param {number} timeout - Timeout in milliseconds
- * @returns {Promise<Element>} The found element
- */
+
 function waitForElement(selector, timeout = 5000) {
   return new Promise((resolve, reject) => {
     const element = document.querySelector(selector);
@@ -292,9 +260,7 @@ function waitForElement(selector, timeout = 5000) {
   });
 }
 
-/**
- * Check if we're on a YouTube watch page
- */
+
 function isYouTubeWatchPage() {
   return window.location.hostname === 'www.youtube.com' && 
          window.location.pathname === '/watch';

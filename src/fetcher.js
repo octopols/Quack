@@ -1,7 +1,4 @@
-/**
- * Fetcher Module
- * Handles fetching comments from YouTube's internal API with pagination support
- */
+// Fetcher Module - YouTube API comment fetching
 
 class CommentFetcher {
   constructor() {
@@ -9,13 +6,10 @@ class CommentFetcher {
     this.ytcfg = null;
     this.totalComments = 0;
     this.fetchedComments = 0;
-    this.maxPages = 100; // Prevent infinite loops
+    this.maxPages = 100;
   }
 
-  /**
-   * Extract YouTube configuration from page
-   * @returns {Object|null} YouTube config object
-   */
+
   extractYtConfig() {
     try {
       // Try window.ytcfg first
@@ -35,34 +29,22 @@ class CommentFetcher {
         }
       }
 
-      console.error('[Fetcher] Could not extract ytcfg');
       return null;
     } catch (error) {
-      console.error('[Fetcher] Error extracting ytcfg:', error);
       return null;
     }
   }
 
-  /**
-   * Extract initial data from page
-   * @returns {Object|null} Initial data object
-   */
+
   extractInitialData() {
     try {
-      console.log('[Fetcher] Attempting to extract ytInitialData...');
-      
       // Try window.ytInitialData first
       if (window.ytInitialData) {
-        console.log('[Fetcher] Found ytInitialData from window');
-        console.log('[Fetcher] ytInitialData keys:', Object.keys(window.ytInitialData));
         return window.ytInitialData;
       }
 
-      console.log('[Fetcher] window.ytInitialData not available, searching scripts...');
-      
       // Try to extract from page HTML with multiple patterns
       const scripts = document.getElementsByTagName('script');
-      console.log(`[Fetcher] Searching ${scripts.length} script tags`);
       
       for (const script of scripts) {
         const content = script.textContent;
@@ -77,33 +59,21 @@ class CommentFetcher {
           for (let i = 0; i < patterns.length; i++) {
             const match = content.match(patterns[i]);
             if (match) {
-              console.log(`[Fetcher] Found ytInitialData from script (pattern ${i + 1})`);
-              const data = JSON.parse(match[1]);
-              console.log('[Fetcher] Extracted data keys:', Object.keys(data));
-              return data;
+              return JSON.parse(match[1]);
             }
           }
         }
       }
 
-      console.error('[Fetcher] Could not extract ytInitialData');
-      console.log('[Fetcher] Available window yt* properties:', 
-        Object.keys(window).filter(k => k.toLowerCase().includes('yt')));
       return null;
     } catch (error) {
-      console.error('[Fetcher] Error extracting ytInitialData:', error);
       return null;
     }
   }
 
-  /**
-   * Extract comment count from the DOM (visible comment count header)
-   * @returns {number|null} Comment count or null
-   */
+
   extractCommentCountFromDOM() {
     try {
-      console.log('[Fetcher] Attempting to extract comment count from DOM...');
-      
       // Try various selectors for the comment count display
       const selectors = [
         'ytd-comments-header-renderer h2 yt-formatted-string',
@@ -117,31 +87,23 @@ class CommentFetcher {
         const element = document.querySelector(selector);
         if (element && element.textContent) {
           const text = element.textContent.trim();
-          console.log(`[Fetcher] Found comment count text: "${text}"`);
           
           // Extract number from text like "1,234" or "1,234 Comments"
           const match = text.match(/[\d,]+/);
           if (match) {
             const count = parseInt(match[0].replace(/,/g, ''), 10);
-            console.log(`[Fetcher] Extracted comment count from DOM: ${count}`);
             return count;
           }
         }
       }
 
-      console.warn('[Fetcher] Could not extract comment count from DOM');
       return null;
     } catch (error) {
-      console.error('[Fetcher] Error extracting comment count from DOM:', error);
       return null;
     }
   }
 
-  /**
-   * Get initial continuation token from page data
-   * @param {Object} data - Initial data object
-   * @returns {string|null} Continuation token
-   */
+
   getInitialContinuation(data) {
     try {
       // Find itemSectionRenderer
@@ -161,16 +123,11 @@ class CommentFetcher {
 
       return null;
     } catch (error) {
-      console.error('[Fetcher] Error getting initial continuation:', error);
       return null;
     }
   }
 
-  /**
-   * Make API request to YouTube
-   * @param {string} continuationToken - Continuation token
-   * @returns {Promise<Object|null>} API response or null
-   */
+
   async fetchCommentsPage(continuationToken) {
     try {
       if (!this.ytcfg) {
@@ -200,7 +157,6 @@ class CommentFetcher {
       });
 
       if (!response.ok) {
-        console.error('[Fetcher] API request failed:', response.status);
         return null;
       }
 
@@ -208,20 +164,13 @@ class CommentFetcher {
       return data;
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log('[Fetcher] Fetch aborted');
         return null;
       }
-      console.error('[Fetcher] Error fetching comments page:', error);
       return null;
     }
   }
 
-  /**
-   * Fetch all comments with pagination
-   * @param {Function} onProgress - Callback for progress updates (comments, total, continuationToken)
-   * @param {Function} onBatch - Callback when a batch of comments is ready
-   * @returns {Promise<Array>} All comments
-   */
+
   async fetchAllComments(onProgress, onBatch) {
     try {
       // Create new abort controller
@@ -250,12 +199,6 @@ class CommentFetcher {
       this.totalComments = extractedTotal || 0;
       this.fetchedComments = 0;
 
-      console.log('[Fetcher] Starting fetch. Total comments:', this.totalComments);
-      
-      if (!extractedTotal) {
-        console.warn('[Fetcher] Could not determine total comment count, will estimate as we fetch');
-      }
-
       // Get initial continuation token
       let continuationToken = this.getInitialContinuation(initialData);
       if (!continuationToken) {
@@ -272,13 +215,11 @@ class CommentFetcher {
         // Fetch page
         const pageData = await this.fetchCommentsPage(continuationToken);
         if (!pageData) {
-          console.warn('[Fetcher] Failed to fetch page', pageCount);
           break;
         }
 
         // Parse comments from page
         const comments = parseComments(pageData);
-        console.log(`[Fetcher] Page ${pageCount}: Found ${comments.length} comments`);
 
         // Add to all comments
         allComments.push(...comments);
@@ -297,7 +238,6 @@ class CommentFetcher {
         // Get next continuation token
         const nextToken = getContinuationToken(pageData);
         if (!nextToken) {
-          console.log('[Fetcher] No more pages');
           break;
         }
 
@@ -307,18 +247,14 @@ class CommentFetcher {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      console.log(`[Fetcher] Fetch complete. Total: ${allComments.length} comments`);
       return allComments;
 
     } catch (error) {
-      console.error('[Fetcher] Error in fetchAllComments:', error);
       throw error;
     }
   }
 
-  /**
-   * Abort current fetch operation
-   */
+
   abort() {
     if (this.abortController) {
       this.abortController.abort();
@@ -326,10 +262,7 @@ class CommentFetcher {
     }
   }
 
-  /**
-   * Extract comments from DOM (fallback method)
-   * @returns {Array} Comments extracted from DOM
-   */
+
   extractCommentsFromDOM() {
     try {
       const comments = [];
@@ -342,24 +275,12 @@ class CommentFetcher {
         '[id*="comment"]'
       ];
 
-      console.log('[Fetcher] Attempting DOM extraction with multiple selectors...');
-      
       let commentElements = [];
       for (const selector of selectors) {
         commentElements = document.querySelectorAll(selector);
         if (commentElements.length > 0) {
-          console.log(`[Fetcher] Found ${commentElements.length} elements with selector: ${selector}`);
           break;
         }
-      }
-
-      if (commentElements.length === 0) {
-        console.error('[Fetcher] No comment elements found with any selector');
-        console.log('[Fetcher] Page structure:', {
-          hasCommentsSection: !!document.querySelector('ytd-comments'),
-          hasCommentsList: !!document.querySelector('ytd-item-section-renderer'),
-          bodyClasses: document.body.className
-        });
       }
 
       for (const element of commentElements) {
@@ -407,20 +328,15 @@ class CommentFetcher {
 
             if (comment.text) {
               comments.push(comment);
-              if (comments.length === 1) {
-                console.log('[Fetcher] Sample DOM comment:', comment);
-              }
             }
           }
         } catch (error) {
-          console.warn('[Fetcher] Error parsing DOM comment:', error);
+          // Skip invalid comments
         }
       }
 
-      console.log(`[Fetcher] Extracted ${comments.length} comments from DOM`);
       return comments;
     } catch (error) {
-      console.error('[Fetcher] Error extracting comments from DOM:', error);
       return [];
     }
   }

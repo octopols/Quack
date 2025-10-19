@@ -1,7 +1,4 @@
-/**
- * UI Module
- * Handles all UI components for the comment search extension
- */
+// UI Module - Comment search interface
 
 class CommentSearchUI {
   constructor() {
@@ -15,9 +12,7 @@ class CommentSearchUI {
     this.isSearchActive = false;
   }
 
-  /**
-   * Initialize UI components
-   */
+
   init() {
     this.findCommentsSection();
     this.createSearchBox();
@@ -25,9 +20,7 @@ class CommentSearchUI {
     this.setupGlobalClickHandlers();
   }
 
-  /**
-   * Set up global click handlers as backup for button interactions
-   */
+
   setupGlobalClickHandlers() {
     // Set up keyboard navigation
     this.setupKeyboardNavigation();
@@ -62,9 +55,7 @@ class CommentSearchUI {
     }, true); // Use capture phase to intercept before YouTube's handlers
   }
 
-  /**
-   * Find YouTube's comments section
-   */
+
   findCommentsSection() {
     // Try different selectors for comments section
     const selectors = [
@@ -77,22 +68,16 @@ class CommentSearchUI {
       const element = document.querySelector(selector);
       if (element) {
         this.commentsSection = element;
-        console.log('[UI] Found comments section:', selector);
         return;
       }
     }
-
-    console.warn('[UI] Could not find comments section');
   }
 
-  /**
-   * Create search box and add to page
-   */
+
   createSearchBox() {
     // Find the comments header where we'll add the search box
     const commentsHeader = document.querySelector('ytd-comments-header-renderer');
     if (!commentsHeader) {
-      console.warn('[UI] Could not find comments header');
       return;
     }
 
@@ -132,13 +117,9 @@ class CommentSearchUI {
     this.searchBox = searchContainer.querySelector('#quack-search-input');
     this.searchButton = searchContainer.querySelector('#quack-search-button');
     this.settingsButton = searchContainer.querySelector('#quack-settings-button');
-
-    console.log('[UI] Search box created');
   }
 
-  /**
-   * Create settings popup
-   */
+
   createSettingsPopup() {
     const popup = document.createElement('div');
     popup.className = 'quack-settings-popup';
@@ -170,13 +151,9 @@ class CommentSearchUI {
 
     document.body.appendChild(popup);
     this.settingsPopup = popup;
-
-    console.log('[UI] Settings popup created');
   }
 
-  /**
-   * Show settings popup
-   */
+
   showSettings() {
     if (this.settingsPopup) {
       this.settingsPopup.style.display = 'block';
@@ -184,9 +161,7 @@ class CommentSearchUI {
     }
   }
 
-  /**
-   * Hide settings popup
-   */
+
   hideSettings() {
     if (this.settingsPopup) {
       this.settingsPopup.style.display = 'none';
@@ -226,7 +201,6 @@ class CommentSearchUI {
     }
 
     if (!this.commentsSection) {
-      console.error('[UI] Cannot show loading state: comments section not found');
       return;
     }
 
@@ -466,7 +440,6 @@ class CommentSearchUI {
         await navigator.clipboard.writeText(textElement.textContent);
         this.showToast('Comment text copied to clipboard!');
       } catch (err) {
-        console.error('Failed to copy text:', err);
         this.showToast('Failed to copy text', 'error');
       }
     }
@@ -486,7 +459,6 @@ class CommentSearchUI {
         await navigator.clipboard.writeText(link);
         this.showToast('Comment link copied to clipboard!');
       } catch (err) {
-        console.error('Failed to copy link:', err);
         this.showToast('Failed to copy link', 'error');
       }
     }
@@ -563,13 +535,17 @@ class CommentSearchUI {
     commentThread.className = 'style-scope ytd-item-section-renderer';
     commentThread.setAttribute('use-small-avatars', '');
     
-            const profilePhotoUrl = 'https://yt3.googleusercontent.com/a/default-user=s88-c-k-c0x00ffffff-no-rj';
     const highlightedText = searcher.highlightMatches(comment.text, query);
     const highlightedAuthor = searcher.settings.searchInAuthorNames 
       ? searcher.highlightMatches(comment.author, query)
       : searcher.escapeHtml(comment.author);
     
-    // Use the exact YouTube comment structure from your example
+    // Get actual profile photo URL or use default
+    const thumbnailUrl = (comment.authorThumbnail && comment.authorThumbnail.length > 0) 
+      ? comment.authorThumbnail[0].url 
+      : 'https://yt3.googleusercontent.com/a/default-user=s88-c-k-c0x00ffffff-no-rj';
+
+    // Use the exact YouTube comment structure
     commentThread.innerHTML = `
       <div id="comment-container" class="style-scope ytd-comment-thread-renderer">
         <div class="threadline style-scope ytd-comment-thread-renderer" hidden=""><div class="continuation style-scope ytd-comment-thread-renderer"></div></div>
@@ -582,7 +558,7 @@ class CommentSearchUI {
             <div id="author-thumbnail" class="style-scope ytd-comment-view-model">
               <button id="author-thumbnail-button" class="style-scope ytd-comment-view-model" aria-label="${searcher.escapeHtml(comment.author)}">
                 <yt-img-shadow fit="" height="40" width="40" class="style-scope ytd-comment-view-model no-transition" style="background-color: transparent;" loaded="">
-                  <img id="img" draggable="false" class="style-scope yt-img-shadow" alt="" height="40" width="40" src="${profilePhotoUrl}">
+                  <img id="img" draggable="false" class="style-scope yt-img-shadow" alt="" height="40" width="40" src="${thumbnailUrl}">
                 </yt-img-shadow>
               </button>
             </div>
@@ -777,7 +753,6 @@ class CommentSearchUI {
         background: transparent;
       `;
       overlay.addEventListener('click', (e) => {
-        console.log('[UI] Overlay click - Like button');
         e.preventDefault();
         e.stopPropagation();
         const buttonElement = likeButton.querySelector('button');
@@ -799,49 +774,29 @@ class CommentSearchUI {
    * @param {Object} comment - Comment data
    */
   setupCommentInteractions(commentElement, comment) {
-    console.log('[DEBUG] Setting up interactions for comment:', comment.id);
-    
     // Handle like button click - more robust event handling
     const likeButton = commentElement.querySelector('#like-button button');
     const likeButtonRenderer = commentElement.querySelector('#like-button');
-    
-    console.log('[DEBUG] Found like button:', !!likeButton, 'renderer:', !!likeButtonRenderer);
     
     if (likeButton) {
       // Try multiple event attachment methods
       
       // Method 1: Direct event listener with capture
       likeButton.addEventListener('click', (e) => {
-        console.log('[DEBUG] Like button clicked - direct listener');
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
         this.handleLikeClick(likeButton, likeButtonRenderer, comment);
       }, true);
       
-      // Method 2: Replace the button entirely
-      const newLikeButton = likeButton.cloneNode(true);
-      likeButton.parentNode.replaceChild(newLikeButton, likeButton);
-      
-      newLikeButton.addEventListener('click', (e) => {
-        console.log('[DEBUG] New like button clicked');
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        this.handleLikeClick(newLikeButton, likeButtonRenderer, comment);
-        return false;
-      }, true);
-      
       // Also handle keyboard activation
-      newLikeButton.addEventListener('keydown', (e) => {
+      likeButton.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          this.handleLikeClick(newLikeButton, likeButtonRenderer, comment);
+          this.handleLikeClick(likeButton, likeButtonRenderer, comment);
         }
       });
     }
-    
-    console.log('[UI] Dislike functionality removed - only like button available');
     
     // Handle reply button click - show reply box
     const replyButton = commentElement.querySelector('#reply-button-end button');
@@ -888,8 +843,6 @@ class CommentSearchUI {
    * @param {Object} comment - Comment data
    */
   handleLikeClick(button, renderer, comment) {
-    console.log('[UI] Like button clicked for comment:', comment.id, comment.author);
-    
     // Toggle liked state visually
     const isLiked = button.getAttribute('aria-pressed') === 'true';
     const newState = !isLiked;
@@ -928,8 +881,6 @@ class CommentSearchUI {
       button.style.transform = '';
     }, 100);
     
-    // Show user feedback
-    console.log(`[UI] Comment ${newState ? 'liked' : 'unliked'}:`, comment.author);
   }
 
 
@@ -955,9 +906,6 @@ class CommentSearchUI {
     
     // Set up event handlers for native-like behavior
     this.setupCommentInteractions(commentElement, comment);
-    
-    // Add invisible click overlays for better button interaction
-    this.addButtonOverlays(commentElement, comment);
     
     // Insert before loading indicator if it exists, otherwise append
     if (this.loadingIndicator) {

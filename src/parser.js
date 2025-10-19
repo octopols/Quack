@@ -1,14 +1,6 @@
-/**
- * Parser Module
- * Handles parsing YouTube comment data from both old and new formats
- */
+// Parser Module - YouTube comment data parsing
 
-/**
- * Recursively search for a key in nested objects/arrays
- * @param {Object|Array} obj - Object or array to search
- * @param {string} searchKey - Key to search for
- * @returns {Array} Array of values found
- */
+
 function searchDict(obj, searchKey) {
   const results = [];
   const stack = [obj];
@@ -32,11 +24,7 @@ function searchDict(obj, searchKey) {
   return results;
 }
 
-/**
- * Extract text from YouTube text objects (runs format)
- * @param {Object} textObj - YouTube text object
- * @returns {string} Extracted text
- */
+
 function extractText(textObj) {
   if (!textObj) return '';
   
@@ -55,11 +43,7 @@ function extractText(textObj) {
   return '';
 }
 
-/**
- * Parse comment from old format (commentRenderer)
- * @param {Object} renderer - commentRenderer object
- * @returns {Object} Parsed comment
- */
+
 function parseCommentRenderer(renderer) {
   try {
     // Extract author thumbnail with multiple fallback paths
@@ -89,16 +73,11 @@ function parseCommentRenderer(renderer) {
 
     return comment;
   } catch (error) {
-    console.warn('[Parser] Error parsing commentRenderer:', error);
     return null;
   }
 }
 
-/**
- * Parse comment from new format (commentViewModel)
- * @param {Object} viewModel - commentViewModel object
- * @returns {Object} Parsed comment
- */
+
 function parseCommentViewModel(viewModel) {
   try {
     // Extract author thumbnail with comprehensive fallback paths
@@ -133,16 +112,11 @@ function parseCommentViewModel(viewModel) {
 
     return comment;
   } catch (error) {
-    console.warn('[Parser] Error parsing commentViewModel:', error);
     return null;
   }
 }
 
-/**
- * Parse comment from commentEntityPayload format
- * @param {Object} entity - commentEntityPayload object
- * @returns {Object} Parsed comment
- */
+
 function parseCommentEntity(entity) {
   try {
     const properties = entity.properties || {};
@@ -179,16 +153,11 @@ function parseCommentEntity(entity) {
 
     return comment;
   } catch (error) {
-    console.warn('[Parser] Error parsing commentEntity:', error);
     return null;
   }
 }
 
-/**
- * Parse comments from API response data
- * @param {Object} data - YouTube API response data
- * @returns {Array} Array of parsed comments
- */
+
 function parseComments(data) {
   const comments = [];
 
@@ -230,17 +199,13 @@ function parseComments(data) {
     }
 
   } catch (error) {
-    console.error('[Parser] Error parsing comments:', error);
+    // Parse error, return empty array
   }
 
   return comments;
 }
 
-/**
- * Get continuation token from response
- * @param {Object} data - YouTube API response data
- * @returns {string|null} Continuation token or null
- */
+
 function getContinuationToken(data) {
   try {
     const continuations = searchDict(data, 'continuationEndpoint');
@@ -249,46 +214,33 @@ function getContinuationToken(data) {
       return continuation.continuationCommand?.token || null;
     }
   } catch (error) {
-    console.warn('[Parser] Error getting continuation token:', error);
+    // Could not get continuation token
   }
   return null;
 }
 
-/**
- * Extract total comment count from data
- * @param {Object} data - YouTube page data
- * @returns {number|null} Total comment count or null
- */
+
 function getTotalCommentCount(data) {
   try {
-    console.log('[Parser] Attempting to extract total comment count...');
-    
     // Try to find comment count in various locations
     const countTexts = [
       ...searchDict(data, 'commentsHeaderRenderer'),
       ...searchDict(data, 'commentsEntryPointHeaderRenderer')
     ];
 
-    console.log(`[Parser] Found ${countTexts.length} comment header renderers`);
-
     for (const countData of countTexts) {
       const countText = extractText(countData.countText || countData.commentCount);
-      console.log('[Parser] Extracted count text:', countText);
       
       if (countText) {
         // Extract number from text like "1,234 Comments"
         const match = countText.match(/[\d,]+/);
         if (match) {
           const count = parseInt(match[0].replace(/,/g, ''), 10);
-          console.log('[Parser] Extracted comment count:', count);
           return count;
         }
       }
     }
-    
-    console.warn('[Parser] Could not find total comment count in data');
   } catch (error) {
-    console.warn('[Parser] Error getting comment count:', error);
   }
   return null;
 }
