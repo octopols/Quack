@@ -134,15 +134,15 @@ Data handling:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution guidelines.
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for development setup and contribution guidelines.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for release history and detailed changes.
+See [CHANGELOG.md](docs/CHANGELOG.md) for release history and detailed changes.
 
 ## Release Notes
 
-See [RELEASE.md](RELEASE.md) for comprehensive release information and installation guide.
+See [RELEASE.md](docs/RELEASE.md) for comprehensive release information and installation guide.
 
 ## License
 
