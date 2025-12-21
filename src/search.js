@@ -92,11 +92,11 @@ class CommentSearcher {
 
       // Add text before match
       result += this.escapeHtml(text.substring(lastIndex, index));
-      
+
       // Add highlighted match
       const match = text.substring(index, index + query.length);
       result += `<mark class="quack-highlight">${this.escapeHtml(match)}</mark>`;
-      
+
       lastIndex = index + query.length;
     }
 

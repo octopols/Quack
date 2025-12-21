@@ -45,7 +45,7 @@ class CommentFetcher {
 
       // Try to extract from page HTML with multiple patterns
       const scripts = document.getElementsByTagName('script');
-      
+
       for (const script of scripts) {
         const content = script.textContent;
         if (content.includes('ytInitialData')) {
@@ -87,7 +87,7 @@ class CommentFetcher {
         const element = document.querySelector(selector);
         if (element && element.textContent) {
           const text = element.textContent.trim();
-          
+
           // Extract number from text like "1,234" or "1,234 Comments"
           const match = text.match(/[\d,]+/);
           if (match) {
@@ -190,12 +190,12 @@ class CommentFetcher {
 
       // Get total comment count - try from data first, then from DOM
       let extractedTotal = getTotalCommentCount(initialData);
-      
+
       // If not found in data, try to extract from the visible comment count on page
       if (!extractedTotal) {
         extractedTotal = this.extractCommentCountFromDOM();
       }
-      
+
       this.totalComments = extractedTotal || 0;
       this.fetchedComments = 0;
 
@@ -211,7 +211,7 @@ class CommentFetcher {
       // Fetch pages
       while (continuationToken && pageCount < this.maxPages) {
         pageCount++;
-        
+
         // Fetch page
         const pageData = await this.fetchCommentsPage(continuationToken);
         if (!pageData) {
@@ -266,7 +266,7 @@ class CommentFetcher {
   extractCommentsFromDOM() {
     try {
       const comments = [];
-      
+
       // Try multiple selectors for comments
       const selectors = [
         'ytd-comment-thread-renderer',
@@ -286,35 +286,41 @@ class CommentFetcher {
       for (const element of commentElements) {
         try {
           // Try multiple selectors for each component
-          const authorElement = element.querySelector('#author-text') || 
-                               element.querySelector('.ytd-comment-renderer #author-text') ||
-                               element.querySelector('a#author-text') ||
-                               element.querySelector('[id*="author"]');
-          
-          const contentElement = element.querySelector('#content-text') || 
-                                element.querySelector('#content #content-text') ||
-                                element.querySelector('yt-formatted-string#content-text') ||
-                                element.querySelector('[id*="content-text"]');
-          
+          const authorElement = element.querySelector('#author-text') ||
+            element.querySelector('.ytd-comment-renderer #author-text') ||
+            element.querySelector('a#author-text') ||
+            element.querySelector('[id*="author"]');
+
+          const contentElement = element.querySelector('#content-text') ||
+            element.querySelector('#content #content-text') ||
+            element.querySelector('yt-formatted-string#content-text') ||
+            element.querySelector('[id*="content-text"]');
+
           const timeElement = element.querySelector('.published-time-text a') ||
-                            element.querySelector('yt-formatted-string.published-time-text a') ||
-                            element.querySelector('[id*="published-time"]') ||
-                            element.querySelector('a[href*="lc="]');
-          
+            element.querySelector('yt-formatted-string.published-time-text a') ||
+            element.querySelector('[id*="published-time"]') ||
+            element.querySelector('a[href*="lc="]');
+
           const likesElement = element.querySelector('#vote-count-middle') ||
-                             element.querySelector('#vote-count-left') ||
-                             element.querySelector('[id*="vote-count"]') ||
-                             element.querySelector('[aria-label*="like"]');
+            element.querySelector('#vote-count-left') ||
+            element.querySelector('[id*="vote-count"]') ||
+            element.querySelector('[aria-label*="like"]');
 
           if (contentElement && contentElement.textContent) {
             // Try to get profile photo from thumbnail element
             const thumbnailElement = element.querySelector('#author-thumbnail img') ||
-                                   element.querySelector('yt-img-shadow img') ||
-                                   element.querySelector('[id*="thumbnail"] img');
-            
+              element.querySelector('yt-img-shadow img') ||
+              element.querySelector('[id*="thumbnail"] img');
+
             const thumbnailUrl = thumbnailElement?.src || null;
             const authorThumbnails = thumbnailUrl ? [{ url: thumbnailUrl }] : [];
-            
+
+
+            const authorName = authorElement?.textContent?.trim() || 'Unknown';
+
+            // Construct channel URL from username
+            const channelUrl = authorName !== 'Unknown' ? `https://www.youtube.com/${authorName}` : '';
+
             const comment = {
               id: element.getAttribute('id') || `dom-${Date.now()}-${Math.random()}`,
               author: authorElement?.textContent?.trim() || 'Unknown',
@@ -322,6 +328,7 @@ class CommentFetcher {
               timestamp: timeElement?.textContent?.trim() || '',
               likes: likesElement?.textContent?.trim() || '0',
               authorThumbnail: authorThumbnails,
+              channelUrl: channelUrl,
               isReply: false,
               replies: []
             };

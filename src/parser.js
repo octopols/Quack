@@ -27,19 +27,19 @@ function searchDict(obj, searchKey) {
 
 function extractText(textObj) {
   if (!textObj) return '';
-  
+
   if (textObj.simpleText) {
     return textObj.simpleText;
   }
-  
+
   if (textObj.runs && Array.isArray(textObj.runs)) {
     return textObj.runs.map(run => run.text || '').join('');
   }
-  
+
   if (typeof textObj === 'string') {
     return textObj;
   }
-  
+
   return '';
 }
 
@@ -54,7 +54,7 @@ function parseCommentRenderer(renderer) {
       // Sometimes it's directly an array
       authorThumbnail = Array.isArray(renderer.authorThumbnail) ? renderer.authorThumbnail : [renderer.authorThumbnail];
     }
-    
+
     const comment = {
       id: renderer.commentId || '',
       author: extractText(renderer.authorText),
@@ -83,7 +83,7 @@ function parseCommentViewModel(viewModel) {
     // Extract author thumbnail with comprehensive fallback paths
     let authorThumbnail = [];
     const author = viewModel.author || {};
-    
+
     if (author.avatar?.image?.sources) {
       authorThumbnail = author.avatar.image.sources;
     } else if (author.avatarThumbnails) {
@@ -93,7 +93,7 @@ function parseCommentViewModel(viewModel) {
     } else if (viewModel.authorThumbnail) {
       authorThumbnail = Array.isArray(viewModel.authorThumbnail) ? viewModel.authorThumbnail : [viewModel.authorThumbnail];
     }
-    
+
     const comment = {
       id: viewModel.commentId || viewModel.commentKey || '',
       author: author.displayName || '',
@@ -122,19 +122,34 @@ function parseCommentEntity(entity) {
     const properties = entity.properties || {};
     const author = entity.author || {};
     const toolbar = entity.toolbar || {};
-    
-    // Extract author thumbnail with comprehensive fallback paths
+
+    // Extract author thumbnail - YouTube provides it in multiple formats
     let authorThumbnail = [];
-    if (author.avatarThumbnails) {
-      authorThumbnail = author.avatarThumbnails;
-    } else if (author.avatar?.image?.sources) {
+
+    // Check entity.avatar.image.sources first (most common in new format)
+    if (entity.avatar?.image?.sources) {
+      authorThumbnail = entity.avatar.image.sources;
+    }
+    // Check author.avatarThumbnailUrl (direct string URL)
+    else if (author.avatarThumbnailUrl) {
+      authorThumbnail = [{ url: author.avatarThumbnailUrl }];
+    }
+    // Fallback to other possible locations
+    else if (author.avatar?.image?.sources) {
       authorThumbnail = author.avatar.image.sources;
     } else if (author.thumbnail?.thumbnails) {
       authorThumbnail = author.thumbnail.thumbnails;
     } else if (properties.authorThumbnail) {
       authorThumbnail = Array.isArray(properties.authorThumbnail) ? properties.authorThumbnail : [properties.authorThumbnail];
     }
-    
+
+
+    // Extract channel URL for clickable profile links
+    // Simply construct URL from username
+    let channelUrl = author.displayName ? `https://www.youtube.com/${author.displayName}` : '';
+
+
+
     const comment = {
       id: properties.commentId || '',
       author: author.displayName || '',
@@ -142,6 +157,7 @@ function parseCommentEntity(entity) {
       timestamp: properties.publishedTime || '',
       likes: toolbar.likeCountNotliked?.trim() || '0',
       authorThumbnail: authorThumbnail,
+      channelUrl: channelUrl,
       isReply: false,
       replies: []
     };
@@ -230,7 +246,7 @@ function getTotalCommentCount(data) {
 
     for (const countData of countTexts) {
       const countText = extractText(countData.countText || countData.commentCount);
-      
+
       if (countText) {
         // Extract number from text like "1,234 Comments"
         const match = countText.match(/[\d,]+/);

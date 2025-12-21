@@ -1,5 +1,5 @@
 // Content Script - Main Entry Point
-console.log('[Quack] Content script loaded on:', location.href);
+// Quack - YouTube Comment Search Extension
 
 // Check if we're on a YouTube watch page
 function isYouTubeWatchPage() {
@@ -13,11 +13,51 @@ let searcher = null;
 let currentSearchQuery = '';
 
 
+/**
+ * Cleanup existing UI and state before re-initialization
+ */
+function cleanup() {
+  // Cleanup existing instance
+
+  // Remove existing search bar if it exists
+  const existingSearchContainer = document.querySelector('.quack-search-container');
+  if (existingSearchContainer) {
+    existingSearchContainer.remove();
+  }
+
+  // Remove settings popup if it exists
+  const existingSettingsPopup = document.querySelector('.quack-settings-popup');
+  if (existingSettingsPopup) {
+    existingSettingsPopup.remove();
+  }
+
+  // Clear search if active
+  if (ui) {
+    ui.clearSearch();
+  }
+
+  // Abort any ongoing fetches
+  if (fetcher) {
+    fetcher.abort();
+  }
+
+  // Reset global state
+  ui = null;
+  fetcher = null;
+  searcher = null;
+  currentSearchQuery = '';
+
+
+}
+
+
 async function init() {
+  // Always cleanup first to avoid duplicates
+  cleanup();
   try {
     // Wait for YouTube page to be ready
     await waitForElement('ytd-comments-header-renderer', 10000);
-    
+
     // Wait a bit more for comments to start loading
     await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -39,7 +79,7 @@ async function init() {
     // Attach event listeners
     attachEventListeners();
   } catch (error) {
-    // Initialization failed, extension won't work
+    console.error('[Quack] Initialization failed:', error);
   }
 }
 
@@ -133,10 +173,10 @@ function attachEventListeners() {
 
   // Close settings popup when clicking outside
   document.addEventListener('click', (e) => {
-    if (ui.settingsPopup && 
-        ui.settingsPopup.style.display === 'block' &&
-        !ui.settingsPopup.contains(e.target) &&
-        e.target !== ui.settingsButton) {
+    if (ui.settingsPopup &&
+      ui.settingsPopup.style.display === 'block' &&
+      !ui.settingsPopup.contains(e.target) &&
+      e.target !== ui.settingsButton) {
       ui.hideSettings();
     }
   });
@@ -176,7 +216,7 @@ async function handleSearch(query) {
       // Batch callback - process and display matches as they arrive
       (comments) => {
         const matches = searcher.filterComments(comments, query);
-        
+
         for (const match of matches) {
           ui.addCommentResult(match, query, searcher);
           matchCount++;
@@ -192,17 +232,17 @@ async function handleSearch(query) {
     try {
       const domComments = fetcher.extractCommentsFromDOM();
       const matches = searcher.filterComments(domComments, query);
-      
+
       ui.hideLoadingIndicator();
       ui.enableSearch();
-      
+
       for (const match of matches) {
         ui.addCommentResult(match, query, searcher);
       }
 
       ui.showFinalResults(matches.length);
       ui.showError('Could not load all comments. Showing visible comments only.');
-      
+
     } catch (fallbackError) {
       ui.showError('Failed to search comments. Please try again.');
     }
@@ -212,15 +252,15 @@ async function handleSearch(query) {
 
 function handleClearSearch() {
   currentSearchQuery = '';
-  
+
   if (fetcher) {
     fetcher.abort();
   }
-  
+
   if (ui) {
     ui.clearSearch();
   }
-  
+
   if (searcher) {
     searcher.reset();
   }
@@ -259,38 +299,42 @@ function waitForElement(selector, timeout = 5000) {
 
 function setupNavigationDetection() {
   let lastUrl = location.href;
-  
+  let initTimeout = null;
+
+
   // Intercept History API calls (catches YouTube SPA navigation)
   const originalPushState = history.pushState;
   const originalReplaceState = history.replaceState;
-  
-  history.pushState = function(...args) {
+
+  history.pushState = function (...args) {
     originalPushState.apply(this, args);
-    setTimeout(checkForNavigation, 100);
+    checkForNavigation();
   };
-  
-  history.replaceState = function(...args) {
+
+  history.replaceState = function (...args) {
     originalReplaceState.apply(this, args);
-    setTimeout(checkForNavigation, 100);
+    checkForNavigation();
   };
-  
-  // Listen for popstate events
+
+  // Listen for popstate events (back/forward navigation)
   window.addEventListener('popstate', () => {
-    setTimeout(checkForNavigation, 100);
+    checkForNavigation();
   });
-  
+
   function checkForNavigation() {
     const currentUrl = location.href;
-    
-    if (currentUrl !== lastUrl && isYouTubeWatchPage()) {
-      // Navigated to a watch page, initialize
-      handleClearSearch();
-      setTimeout(() => {
-        init();
-      }, 1000);
+
+    if (currentUrl !== lastUrl) {
+
       lastUrl = currentUrl;
-    } else if (currentUrl !== lastUrl) {
-      lastUrl = currentUrl;
+
+      if (isYouTubeWatchPage()) {
+        // Navigated to a watch page - wait longer for DOM to settle
+
+        setTimeout(() => {
+          init();
+        }, 1500); // Increased from 1000ms to 1500ms
+      }
     }
   }
 }
@@ -304,13 +348,13 @@ function getVideoIdFromUrl(url) {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     if (isYouTubeWatchPage()) {
-      setTimeout(init, 1000);
+      init();
     }
     setupNavigationDetection();
   });
 } else {
   if (isYouTubeWatchPage()) {
-    setTimeout(init, 1000);
+    init();
   }
   setupNavigationDetection();
 }

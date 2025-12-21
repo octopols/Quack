@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Quack",
-  "version": "3.0.0",
-  "description": "Search through ALL comments on any YouTube video, including paginated comments",
+  "version": "3.1.0",
+  "description": "Search through ALL comments on any YouTube video. Features profile pictures and clickable usernames!",
   "author": "Hirnaymay Bhaskar",
   "homepage_url": "https://github.com/yourusername/quack",
   "icons": {

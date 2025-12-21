@@ -24,28 +24,28 @@ class CommentSearchUI {
   setupGlobalClickHandlers() {
     // Set up keyboard navigation
     this.setupKeyboardNavigation();
-    
+
     // Set up copy functionality
     this.setupCopyFunctionality();
-    
+
     // Use document-level event delegation for like buttons
     document.addEventListener('click', (e) => {
       const target = e.target;
-      
+
       // Check if clicked element is within a like button
       const likeButton = target.closest('#like-button');
       if (likeButton) {
         const commentElement = target.closest('ytd-comment-thread-renderer[data-comment-id]');
         if (commentElement) {
-          console.log('[UI] Global click handler - Like button clicked');
+
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
-          
+
           const commentId = commentElement.getAttribute('data-comment-id');
           const commentAuthor = commentElement.getAttribute('data-comment-author');
           const buttonElement = likeButton.querySelector('button');
-          
+
           if (buttonElement) {
             this.handleLikeClick(buttonElement, likeButton, { id: commentId, author: commentAuthor });
           }
@@ -75,9 +75,17 @@ class CommentSearchUI {
 
 
   createSearchBox() {
+    // Check if search bar already exists and remove it
+    const existingSearchContainer = document.querySelector('.quack-search-container');
+    if (existingSearchContainer) {
+
+      existingSearchContainer.remove();
+    }
+
     // Find the comments header where we'll add the search box
     const commentsHeader = document.querySelector('ytd-comments-header-renderer');
     if (!commentsHeader) {
+
       return;
     }
 
@@ -221,12 +229,12 @@ class CommentSearchUI {
     // Create loading indicator
     this.createLoadingIndicator();
     this.disableSearch();
-    
+
     // Add search active class
     if (this.commentsSection) {
       this.commentsSection.classList.add('quack-search-active');
     }
-    
+
     this.isSearchActive = true;
   }
 
@@ -281,17 +289,17 @@ class CommentSearchUI {
     document.addEventListener('keydown', (e) => {
       // Only handle keys when search is active and not typing in input
       if (!this.isSearchActive || e.target === this.searchBox) return;
-      
+
       const comments = document.querySelectorAll('.quack-search-active ytd-comment-thread-renderer');
       if (comments.length === 0) return;
-      
+
       const currentFocused = document.querySelector('.quack-comment-focused');
       let currentIndex = -1;
-      
+
       if (currentFocused) {
         currentIndex = Array.from(comments).indexOf(currentFocused);
       }
-      
+
       switch (e.key) {
         case 'ArrowDown':
         case 'j': // Vim-style navigation
@@ -332,7 +340,7 @@ class CommentSearchUI {
   focusComment(comments, index) {
     // Remove previous focus
     this.clearCommentFocus();
-    
+
     if (index >= 0 && index < comments.length) {
       const comment = comments[index];
       comment.classList.add('quack-comment-focused');
@@ -381,13 +389,13 @@ class CommentSearchUI {
       z-index: 10000;
       min-width: 150px;
     `;
-    
+
     const options = [
       { text: 'Copy comment text', action: () => this.copyCommentText(commentElement) },
       { text: 'Copy comment link', action: () => this.copyCommentLink(commentElement) },
       { text: 'Go to author channel', action: () => this.goToAuthorChannel(commentElement) }
     ];
-    
+
     options.forEach(option => {
       const item = document.createElement('div');
       item.className = 'quack-context-menu-item';
@@ -400,25 +408,25 @@ class CommentSearchUI {
         border-radius: 4px;
         margin: 4px;
       `;
-      
+
       item.addEventListener('mouseenter', () => {
         item.style.backgroundColor = 'var(--yt-spec-badge-chip-background)';
       });
-      
+
       item.addEventListener('mouseleave', () => {
         item.style.backgroundColor = '';
       });
-      
+
       item.addEventListener('click', () => {
         option.action();
         document.body.removeChild(menu);
       });
-      
+
       menu.appendChild(item);
     });
-    
+
     document.body.appendChild(menu);
-    
+
     // Remove menu when clicking elsewhere
     setTimeout(() => {
       document.addEventListener('click', () => {
@@ -452,7 +460,7 @@ class CommentSearchUI {
   async copyCommentLink(commentElement) {
     const commentId = commentElement.getAttribute('data-comment-id');
     const videoId = new URLSearchParams(window.location.search).get('v');
-    
+
     if (commentId && videoId) {
       const link = `${window.location.origin}/watch?v=${videoId}&lc=${commentId}`;
       try {
@@ -505,9 +513,9 @@ class CommentSearchUI {
       box-shadow: 0 4px 16px rgba(0,0,0,0.3);
       animation: quack-fadeIn 0.3s ease-out;
     `;
-    
+
     document.body.appendChild(toast);
-    
+
     setTimeout(() => {
       toast.style.animation = 'quack-fadeOut 0.3s ease-out';
       setTimeout(() => {
@@ -534,16 +542,19 @@ class CommentSearchUI {
     const commentThread = document.createElement('ytd-comment-thread-renderer');
     commentThread.className = 'style-scope ytd-item-section-renderer';
     commentThread.setAttribute('use-small-avatars', '');
-    
+
     const highlightedText = searcher.highlightMatches(comment.text, query);
-    const highlightedAuthor = searcher.settings.searchInAuthorNames 
+    const highlightedAuthor = searcher.settings.searchInAuthorNames
       ? searcher.highlightMatches(comment.author, query)
       : searcher.escapeHtml(comment.author);
-    
+
     // Get actual profile photo URL or use default
-    const thumbnailUrl = (comment.authorThumbnail && comment.authorThumbnail.length > 0) 
-      ? comment.authorThumbnail[0].url 
+    const thumbnailUrl = (comment.authorThumbnail && comment.authorThumbnail.length > 0)
+      ? comment.authorThumbnail[0].url
       : 'https://yt3.googleusercontent.com/a/default-user=s88-c-k-c0x00ffffff-no-rj';
+
+    // Get channel URL for clickable profile links
+    const channelUrl = comment.channelUrl || '#';
 
     // Use the exact YouTube comment structure
     commentThread.innerHTML = `
@@ -556,18 +567,20 @@ class CommentSearchUI {
           
           <div id="body" class="style-scope ytd-comment-view-model">
             <div id="author-thumbnail" class="style-scope ytd-comment-view-model">
-              <button id="author-thumbnail-button" class="style-scope ytd-comment-view-model" aria-label="${searcher.escapeHtml(comment.author)}">
-                <yt-img-shadow fit="" height="40" width="40" class="style-scope ytd-comment-view-model no-transition" style="background-color: transparent;" loaded="">
-                  <img id="img" draggable="false" class="style-scope yt-img-shadow" alt="" height="40" width="40" src="${thumbnailUrl}">
-                </yt-img-shadow>
-              </button>
+              <a href="${channelUrl}" target="_blank" class="style-scope ytd-comment-view-model">
+                <button id="author-thumbnail-button" class="style-scope ytd-comment-view-model" aria-label="${searcher.escapeHtml(comment.author)}">
+                  <yt-img-shadow fit="" height="40" width="40" class="style-scope ytd-comment-view-model no-transition" style="background-color: transparent;" loaded="">
+                    <img id="img" draggable="false" class="style-scope yt-img-shadow" alt="" height="40" width="40" src="${thumbnailUrl}">
+                  </yt-img-shadow>
+                </button>
+              </a>
             </div>
             <div id="main" class="style-scope ytd-comment-view-model">
               <div id="header" class="style-scope ytd-comment-view-model">
                 <div id="pinned-comment-badge" class="style-scope ytd-comment-view-model"></div>
                 <div id="header-author" class="style-scope ytd-comment-view-model">
                   <h3 class="style-scope ytd-comment-view-model">
-                    <a id="author-text" class="yt-simple-endpoint style-scope ytd-comment-view-model" href="#">
+                    <a id="author-text" class="yt-simple-endpoint style-scope ytd-comment-view-model" href="${channelUrl}" target="_blank">
                       <span class="style-scope ytd-comment-view-model">${highlightedAuthor}</span>
                     </a>
                   </h3>
@@ -636,7 +649,7 @@ class CommentSearchUI {
         </ytd-comment-view-model>
       </div>
     `;
-    
+
     return commentThread;
   }
 
@@ -652,7 +665,7 @@ class CommentSearchUI {
       existingDialog.remove();
       return;
     }
-    
+
     const replyDialog = document.createElement('div');
     replyDialog.className = 'quack-reply-dialog';
     replyDialog.style.cssText = `
@@ -662,7 +675,7 @@ class CommentSearchUI {
       border-radius: 8px;
       border-left: 3px solid var(--yt-spec-call-to-action);
     `;
-    
+
     replyDialog.innerHTML = `
       <div style="margin-bottom: 12px; font-size: 14px; color: var(--yt-spec-text-secondary);">
         Replying to ${comment.author}
@@ -705,14 +718,14 @@ class CommentSearchUI {
         ">Reply</button>
       </div>
     `;
-    
+
     // Add event listeners
     const cancelBtn = replyDialog.querySelector('.quack-reply-cancel');
     const submitBtn = replyDialog.querySelector('.quack-reply-submit');
     const textarea = replyDialog.querySelector('.quack-reply-input');
-    
+
     cancelBtn.addEventListener('click', () => replyDialog.remove());
-    
+
     submitBtn.addEventListener('click', () => {
       const replyText = textarea.value.trim();
       if (replyText) {
@@ -720,10 +733,10 @@ class CommentSearchUI {
         replyDialog.remove();
       }
     });
-    
+
     // Focus textarea
     setTimeout(() => textarea.focus(), 100);
-    
+
     // Insert after the comment content
     const insertPoint = commentElement.querySelector('#action-buttons') || commentElement.querySelector('.ytd-comment-engagement-bar');
     if (insertPoint) {
@@ -739,7 +752,7 @@ class CommentSearchUI {
   addButtonOverlays(commentElement, comment) {
     const likeButton = commentElement.querySelector('#like-button');
 
-    
+
     if (likeButton) {
       const overlay = document.createElement('div');
       overlay.style.cssText = `
@@ -760,11 +773,11 @@ class CommentSearchUI {
           this.handleLikeClick(buttonElement, likeButton, comment);
         }
       });
-      
+
       likeButton.style.position = 'relative';
       likeButton.appendChild(overlay);
     }
-    
+
 
   }
 
@@ -777,10 +790,10 @@ class CommentSearchUI {
     // Handle like button click - more robust event handling
     const likeButton = commentElement.querySelector('#like-button button');
     const likeButtonRenderer = commentElement.querySelector('#like-button');
-    
+
     if (likeButton) {
       // Try multiple event attachment methods
-      
+
       // Method 1: Direct event listener with capture
       likeButton.addEventListener('click', (e) => {
         e.preventDefault();
@@ -788,7 +801,7 @@ class CommentSearchUI {
         e.stopImmediatePropagation();
         this.handleLikeClick(likeButton, likeButtonRenderer, comment);
       }, true);
-      
+
       // Also handle keyboard activation
       likeButton.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -797,7 +810,7 @@ class CommentSearchUI {
         }
       });
     }
-    
+
     // Handle reply button click - show reply box
     const replyButton = commentElement.querySelector('#reply-button-end button');
     if (replyButton) {
@@ -806,7 +819,7 @@ class CommentSearchUI {
         this.showReplyDialog(commentElement, comment);
       });
     }
-    
+
     // Handle author name click - go to channel
     const authorLink = commentElement.querySelector('#author-text');
     if (authorLink) {
@@ -815,7 +828,7 @@ class CommentSearchUI {
         this.goToAuthorChannel(commentElement);
       });
     }
-    
+
     // Handle author thumbnail click - go to channel
     const authorThumbnail = commentElement.querySelector('#author-thumbnail-button');
     if (authorThumbnail) {
@@ -824,7 +837,7 @@ class CommentSearchUI {
         this.goToAuthorChannel(commentElement);
       });
     }
-    
+
     // Handle timestamp click - copy permalink
     const timestamp = commentElement.querySelector('#published-time-text a');
     if (timestamp) {
@@ -846,9 +859,9 @@ class CommentSearchUI {
     // Toggle liked state visually
     const isLiked = button.getAttribute('aria-pressed') === 'true';
     const newState = !isLiked;
-    
+
     button.setAttribute('aria-pressed', newState.toString());
-    
+
     // Update visual state with YouTube's styling
     if (newState) {
       // Liked state - use YouTube's exact blue color
@@ -873,14 +886,14 @@ class CommentSearchUI {
       const icon = button.querySelector('svg');
       if (icon) icon.style.fill = '';
     }
-    
+
     // Visual feedback animation
     button.style.transform = 'scale(0.9)';
     button.style.transition = 'transform 0.1s ease';
     setTimeout(() => {
       button.style.transform = '';
     }, 100);
-    
+
   }
 
 
@@ -896,17 +909,17 @@ class CommentSearchUI {
 
     // Create native-looking comment element
     const commentElement = this.createNativeCommentElement(comment, query, searcher);
-    
+
     // Add some additional styling to make it blend better
     commentElement.style.marginBottom = '16px';
-    
+
     // Add a data attribute to track this comment
     commentElement.setAttribute('data-comment-id', comment.id);
     commentElement.setAttribute('data-comment-author', comment.author);
-    
+
     // Set up event handlers for native-like behavior
     this.setupCommentInteractions(commentElement, comment);
-    
+
     // Insert before loading indicator if it exists, otherwise append
     if (this.loadingIndicator) {
       contentsContainer.insertBefore(commentElement, this.loadingIndicator);
@@ -922,7 +935,7 @@ class CommentSearchUI {
   showFinalResults(matchCount) {
     this.hideLoadingIndicator();
     this.enableSearch();
-    
+
     if (matchCount === 0) {
       this.showNoResults();
     } else {
@@ -991,7 +1004,7 @@ class CommentSearchUI {
     this.restoreOriginalComments();
     this.hideLoadingIndicator();
     this.enableSearch();
-    
+
     // Remove search active class
     if (this.commentsSection) {
       this.commentsSection.classList.remove('quack-search-active');
@@ -1047,18 +1060,18 @@ class CommentSearchUI {
 
     contentsContainer.appendChild(errorElement);
     this.enableSearch();
-    
+
     // Remove search active class
     if (this.commentsSection) {
       this.commentsSection.classList.remove('quack-search-active');
     }
-    
-    
+
+
     // Remove search active class
     if (this.commentsSection) {
       this.commentsSection.classList.remove('quack-search-active');
     }
-    
+
     this.isSearchActive = false;
   }
 }

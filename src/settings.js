@@ -38,10 +38,10 @@ class SettingsManager {
     try {
       this.settings = { ...this.settings, ...newSettings };
       await chrome.storage.sync.set({ quackSettings: this.settings });
-      
+
       // Notify all listeners of settings change
       this.listeners.forEach(listener => listener(this.settings));
-      
+
       return this.settings;
     } catch (error) {
       throw error;

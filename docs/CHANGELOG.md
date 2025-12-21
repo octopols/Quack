@@ -1,40 +1,45 @@
 # Changelog
 
-All notable changes to Quack will be documented in this file.
+All notable changes to Quack are documented here.
 
-## [3.0.0] - 2025-10-18
+## [3.1.0] - 2024-12-22
 
 ### Added
-- YouTube-style search icon button with click functionality
-- Moved settings icon outside search box for better UX
-- Added comprehensive GitHub automation (releases, version bumping, Chrome Web Store upload)
-- Enhanced documentation with project-specific issue and PR templates
-- Added screenshot placeholders for better project showcase
+- Profile pictures now display for comment authors
+- Clickable usernames and profile pictures (opens channel in new tab)
+- Channel URL construction from usernames
 
-## [2.0.0] - 2025-10-18
+### Fixed
+- Profile picture extraction from YouTube API
+- Double tab opening when clicking usernames
+
+### Technical
+- Simplified channel URL generation
+- Removed all debug console.log statements
+- Updated manifest description
+
+## [3.0.0] - 2024-10-18
+
+### Added
+- YouTube-style search icon button
+- Comprehensive GitHub automation
+- Chrome Web Store upload workflow
+
+### Changed
+- Moved settings icon outside search box
+
+## [2.0.0] - 2024-10-18
 
 ### Added
 - Complete rewrite with modular architecture
-- Support for new YouTube data formats (commentViewModel, commentEntityPayload)
+- Support for new YouTube formats (commentViewModel, commentEntityPayload)
 - Progressive result streaming
 - Configurable settings with persistence
 - Match highlighting
-- Improved API pagination handling
-- Better error handling and format fallbacks
-- Fixed extraction issues with updated YouTube DOM structure
+- Improved API pagination
 
 ### Technical
 - Manifest V3 compliance
-- Zero external dependencies (vanilla JavaScript)
-- Chrome Storage API for settings persistence
-- YouTube internal API for comment pagination
-- Scoped CSS styling with `quack-` namespace
-
-### Features
-- Comprehensive search across all paginated comments
-- Progressive result streaming (no blocking UI)
-- Configurable search parameters (case sensitivity, reply inclusion, author matching)
-- Match highlighting with configurable toggle
-- Native YouTube UI integration
-- Settings persistence via Chrome Storage API
-- Real-time search progress metrics
+- Zero external dependencies
+- Chrome Storage API for settings
+- Scoped CSS with quack- namespace

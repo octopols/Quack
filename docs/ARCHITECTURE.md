@@ -1,313 +1,86 @@
-# Quack - Architecture
+# Architecture
 
-## Component Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                       USER INTERFACE                         │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ Search Input │ Search Icon │ │ Settings Icon │ Loading │ │
-│  └────────────────────────────────────────────────────────┘ │
-│                                                               │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │            Progressive Results Display                  │ │
-│  │  ┌─────────────────────────────────────────────────┐   │ │
-│  │  │  Comment 1                                       │   │ │
-│  │  │  Comment 2                                       │   │ │
-│  │  │  Comment 3                                       │   │ │
-│  │  │  ...                                             │   │ │
-│  │  └─────────────────────────────────────────────────┘   │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                            ▲
-                            │
-                    ┌───────┴────────┐
-                    │   ui.js        │
-                    │  (View Layer)  │
-                    └───────┬────────┘
-                            │
-                    ┌───────▼────────┐
-                    │  content.js    │
-                    │ (Controller)   │
-                    └───┬───┬───┬───┬┘
-                        │   │   │   │
-        ┌───────────────┘   │   │   └───────────────┐
-        │                   │   │                   │
-┌───────▼────────┐  ┌───────▼───────┐  ┌──────────▼──────────┐
-│   fetcher.js   │  │   search.js   │  │   settings.js       │
-│  (Data Layer)  │  │ (Business     │  │  (State Mgmt)       │
-│                │  │  Logic)       │  │                     │
-│ • YouTube API  │  │ • Filtering   │  │ • Chrome Storage    │
-│ • Pagination   │  │ • Highlighting│  │ • Persistence       │
-└───────┬────────┘  └───────────────┘  └─────────────────────┘
-        │
-┌───────▼────────┐
-│   parser.js    │
-│ (Data Process) │
-│                │
-│ • Format 1     │
-│ • Format 2     │
-│ • Format 3     │
-└────────────────┘
-```
-
-## Search Flow
+## File Structure
 
 ```
-User Query Input (Enter Key)
-            │
-            ▼
-    ┌───────────────┐
-    │  content.js   │
-    │ handleSearch()│
-    └───────┬───────┘
-            │
-            ▼
-    ┌───────────────┐
-    │    ui.js      │
-    │ showLoading() │
-    └───────┬───────┘
-            │
-            ▼
-    ┌───────────────────┐
-    │   fetcher.js      │
-    │ fetchAllComments()│
-    └───────┬───────────┘
-            │
-            ▼
-    ┌──────────────────┐      ┌─────────────────┐
-    │ Extract YouTube  │──────▶│ Get Config &    │
-    │ Page Data        │      │ Continuation    │
-    └──────┬───────────┘      └─────────────────┘
-           │
-           ▼
-    ┌──────────────────┐
-    │  Fetch Page 1    │
-    └──────┬───────────┘
-           │
-           ▼
-    ┌──────────────────┐      ┌─────────────────┐
-    │   parser.js      │──────▶│ Parse & Extract │
-    │ parseComments()  │      │ Normalize Data  │
-    └──────┬───────────┘      └─────────────────┘
-           │
-           ▼
-    ┌──────────────────┐      ┌─────────────────┐
-    │   search.js      │──────▶│ Filter Matches  │
-    │ filterComments() │      │ Apply Settings  │
-    └──────┬───────────┘      └─────────────────┘
-           │
-           ▼
-    ┌──────────────────┐      ┌─────────────────┐
-    │     ui.js        │──────▶│ Stream to DOM   │
-    │ addCommentResult │      │ (Progressive)   │
-    └──────┬───────────┘      └─────────────────┘
-           │
-           │   Continuation Token?
-           ├─────YES─────┐
-           │             ▼
-           │      Fetch Next Page
-           │             │
-           │             └──────┐
-           │                    │
-           NO                   │
-           │                    │
-           ▼                    │
-    ┌──────────────────┐       │
-    │     ui.js        │       │
-    │ showFinalResults │       │
-    └──────────────────┘       │
-                                │
-                                └─────▶ Iterate Until Complete
-```
-
-## Data Structure Flow
-
-```
-YouTube Page DOM
-    │
-    ▼
-┌─────────────────────────────────────┐
-│     ytInitialData (Window Object)   │
-│  ┌───────────────────────────────┐  │
-│  │  commentThreadRenderer        │  │
-│  │    ├─ commentRenderer (old)   │  │
-│  │    └─ commentViewModel (new)  │  │
-│  └───────────────────────────────┘  │
-└─────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────┐
-│        parser.js Processing         │
-│  ┌───────────────────────────────┐  │
-│  │  Format Detection             │  │
-│  │  Field Extraction:            │  │
-│  │    • id                       │  │
-│  │    • author                   │  │
-│  │    • text                     │  │
-│  │    • timestamp                │  │
-│  │    • likes                    │  │
-│  └───────────────────────────────┘  │
-└─────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────┐
-│      Normalized Comment Object      │
-│  {                                  │
-│    id: "xyz123",                    │
-│    author: "John Doe",              │
-│    text: "Great video!",            │
-│    timestamp: "2 days ago",         │
-│    likes: "42",                     │
-│    isReply: false,                  │
-│    replies: []                      │
-│  }                                  │
-└─────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────┐
-│       search.js Filtering           │
-│  if (text.includes(query) ||        │
-│      author.includes(query)) {      │
-│    return true;                     │
-│  }                                  │
-└─────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────┐
-│         DOM Rendering               │
-│  ┌───────────────────────────────┐  │
-│  │  <div class="quack-comment">   │  │
-│  │    <author>John Doe</author>  │  │
-│  │    <text>Great video!</text>  │  │
-│  │    <likes>42</likes>          │  │
-│  │  </div>                       │  │
-│  └───────────────────────────────┘  │
-└─────────────────────────────────────┘
+src/
+├── content.js      # Main controller, orchestrates all modules
+├── ui.js          # DOM manipulation and rendering
+├── fetcher.js     # YouTube API interaction
+├── parser.js      # Comment data normalization
+├── search.js      # Query filtering logic
+├── settings.js    # Chrome storage persistence
+└── styles.css     # Scoped CSS (quack- namespace)
 ```
 
 ## Module Dependencies
 
 ```
-content.js (Orchestration)
-    │
-    ├──▶ settings.js (State management)
-    │
-    ├──▶ ui.js (DOM manipulation)
-    │    │
-    │    └──▶ styles.css
-    │
-    ├──▶ fetcher.js (API interaction)
-    │    │
-    │    └──▶ parser.js (Data normalization)
-    │
-    └──▶ search.js (Query filtering)
+content.js
+├── settings.js (state management)
+├── ui.js (view layer)
+├── fetcher.js (data layer)
+│   └── parser.js (data processing)
+└── search.js (business logic)
 ```
 
-## Script Loading Order
+## Data Flow
 
 ```
-1. manifest.json           ← Chrome extension entry
-    │
-    ├─▶ 2. settings.js     ← No dependencies
-    │
-    ├─▶ 3. parser.js       ← Used by fetcher
-    │
-    ├─▶ 4. fetcher.js      ← Depends on parser
-    │
-    ├─▶ 5. search.js       ← Independent
-    │
-    ├─▶ 6. ui.js           ← Creates DOM elements
-    │
-    └─▶ 7. content.js      ← Main controller
-    
-    Plus: styles.css       ← Loaded in parallel
+User Input → content.js → fetcher.js → YouTube API
+                ↓
+         parser.js (normalize)
+                ↓
+         search.js (filter)
+                ↓
+         ui.js (render progressively)
 ```
 
-## Event Flow
+## Search Flow
 
-```
-Page Load
-    │
-    ▼
-┌─────────────────────┐
-│ Wait for Comments   │
-│ Section (DOM)       │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│ Initialize Modules  │
-│ • settings          │
-│ • ui                │
-│ • fetcher           │
-│ • search            │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│ Inject Search UI    │
-│ Attach Listeners    │
-└──────────┬──────────┘
-           │
-           ▼
-     Wait for Input
-           │
-           ▼
-    ┌──────────────┐
-    │ Query + Enter│
-    └──────┬───────┘
-           │
-           ▼
-    ┌──────────────┐
-    │ Execute      │
-    │ Search       │
-    └──────────────┘
+1. User enters query and presses Enter
+2. UI shows loading state
+3. Fetcher extracts YouTube config and continuation token
+4. Fetcher fetches comment pages (paginated)
+5. Parser normalizes each page's data
+6. Search filters comments matching query
+7. UI streams results to DOM progressively
+8. Repeat until all pages fetched
+
+## Comment Object Structure
+
+```javascript
+{
+  id: "comment_id",
+  author: "username",
+  text: "comment content",
+  timestamp: "2 days ago",
+  likes: "42",
+  authorThumbnail: [{url: "..."}],
+  channelUrl: "https://youtube.com/@username",
+  isReply: false,
+  replies: []
+}
 ```
 
-## Settings Persistence
+## Settings Storage
 
-```
-┌────────────────────────────────────┐
-│      Chrome Storage API            │
-│  ┌──────────────────────────────┐  │
-│  │  quackSettings:              │  │
-│  │  {                           │  │
-│  │    caseSensitive: false,     │  │
-│  │    searchInReplies: true,    │  │
-│  │    searchInAuthorNames: false│  │
-│  │    highlightMatches: true    │  │
-│  │  }                           │  │
-│  └──────────────────────────────┘  │
-└────────────────────────────────────┘
-           ▲           │
-           │ write     │ read
-           │           ▼
-┌──────────────────────────────────┐
-│       settings.js                │
-│  • init()                        │
-│  • getSettings()                 │
-│  • updateSettings()              │
-│  • resetSettings()               │
-└──────────────────────────────────┘
+```javascript
+// Stored in chrome.storage.sync
+{
+  caseSensitive: false,
+  searchInReplies: true,
+  searchInAuthorNames: false,
+  highlightMatches: true
+}
 ```
 
-## CSS Namespace Strategy
+## Loading Order
 
-```
-Prefix: quack-
-        └─── YouTube Comment Search
-
-Examples:
-  • quack-search-container
-  • quack-search-input
-  • quack-settings-popup
-  • quack-loading-indicator
-  • quack-comment-result
-  • quack-highlight
-
-Rationale:
-  - Avoids collision with YouTube's CSS
-  - Easy identification in DevTools
-  - Scoped styling without Shadow DOM overhead
-```
+1. settings.js (no dependencies)
+2. parser.js (used by fetcher)
+3. fetcher.js (depends on parser)
+4. search.js (independent)
+5. ui.js (creates DOM)
+6. content.js (orchestrator)
+7. styles.css (parallel)
