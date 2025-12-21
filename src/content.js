@@ -206,6 +206,17 @@ async function handleSearch(query) {
     searcher.reset();
 
     let matchCount = 0;
+    let totalCommentsSearched = 0;
+
+    // Get settings for reply fetching
+    const settings = await settingsManager.getSettings();
+    const shouldFetchReplies = settings.searchInReplies;
+
+    // Cache to store parent comments for later reply nesting
+    const parentCommentCache = new Map();
+
+    console.log('[Quack] 📋 Settings:', settings);
+    console.log(`[Quack] 🔧 Reply fetching: ${shouldFetchReplies ? 'ENABLED' : 'DISABLED'}`);
 
     // Fetch all comments with progressive display
     await fetcher.fetchAllComments(
@@ -215,13 +226,73 @@ async function handleSearch(query) {
       },
       // Batch callback - process and display matches as they arrive
       (comments) => {
+        totalCommentsSearched += comments.length;
+
+        // Cache any top-level comments that might have replies
+        for (const comment of comments) {
+          if (!comment.isReply) {
+            parentCommentCache.set(comment.id, comment);
+          }
+        }
+
         const matches = searcher.filterComments(comments, query);
 
-        for (const match of matches) {
-          ui.addCommentResult(match, query, searcher);
-          matchCount++;
+        // Separate top-level comments and replies
+        const topLevelMatches = matches.filter(m => !m.isReply);
+        const replyMatches = matches.filter(m => m.isReply);
+
+        // Group replies with their parent comments
+        const parentMap = new Map();
+
+        // First, add all top-level comment matches to the map
+        for (const match of topLevelMatches) {
+          if (!parentMap.has(match.id)) {
+            parentMap.set(match.id, { comment: match, replies: [], matched: true });
+          }
         }
-      }
+
+        // Then, handle reply matches - look up parents from cache
+        for (const reply of replyMatches) {
+          if (reply.parentCommentId) {
+            let parent = parentMap.get(reply.parentCommentId);
+
+            // If parent not in map, find it from cache
+            if (!parent) {
+              const parentComment = parentCommentCache.get(reply.parentCommentId);
+              if (parentComment) {
+                parent = { comment: parentComment, replies: [], matched: false };
+                parentMap.set(reply.parentCommentId, parent);
+              }
+            }
+
+            if (parent) {
+              parent.replies.push(reply);
+            } else {
+              // Parent not found at all - show reply standalone
+              ui.addCommentResult(reply, query, searcher, true);
+              matchCount++;
+            }
+          } else {
+          }
+        }
+
+        // Display comments with their nested replies
+        for (const { comment, replies, matched } of parentMap.values()) {
+          // Attach replies to comment object for nested rendering
+          if (replies.length > 0) {
+            comment.replies = replies;
+          }
+          ui.addCommentResult(comment, query, searcher);
+
+          // Only count matches, not context parents
+          if (matched) {
+            matchCount++;
+          }
+          matchCount += replies.length; // Count all matched replies
+        }
+      },
+      // Pass reply fetching setting
+      shouldFetchReplies
     );
 
     // Show final results

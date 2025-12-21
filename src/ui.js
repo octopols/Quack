@@ -535,9 +535,11 @@ class CommentSearchUI {
    * @param {Object} comment - Comment object
    * @param {string} query - Search query for highlighting
    * @param {Object} searcher - Searcher instance for highlighting
+   * @param {boolean} isReply - Whether this is a reply comment
+   * @param {string} parentAuthor - Parent author name for reply indicator
    * @returns {HTMLElement} Comment element
    */
-  createNativeCommentElement(comment, query, searcher) {
+  createNativeCommentElement(comment, query, searcher, isReply = false, parentAuthor = null) {
     // Create the main comment thread container
     const commentThread = document.createElement('ytd-comment-thread-renderer');
     commentThread.className = 'style-scope ytd-item-section-renderer';
@@ -556,6 +558,21 @@ class CommentSearchUI {
     // Get channel URL for clickable profile links
     const channelUrl = comment.channelUrl || '#';
 
+    // Use smaller avatar for replies
+    const avatarSize = isReply ? '32' : '40';
+
+    // Build reply indicator if this is a reply
+    const replyIndicator = isReply && parentAuthor ? `
+      <div class="quack-reply-indicator" style="
+        font-size: 12px;
+        color: var(--yt-spec-text-secondary);
+        margin-bottom: 4px;
+        font-style: italic;
+      ">
+        ↳ In reply to @${searcher.escapeHtml(parentAuthor)}
+      </div>
+    ` : '';
+
     // Use the exact YouTube comment structure
     commentThread.innerHTML = `
       <div id="comment-container" class="style-scope ytd-comment-thread-renderer">
@@ -569,13 +586,14 @@ class CommentSearchUI {
             <div id="author-thumbnail" class="style-scope ytd-comment-view-model">
               <a href="${channelUrl}" target="_blank" class="style-scope ytd-comment-view-model">
                 <button id="author-thumbnail-button" class="style-scope ytd-comment-view-model" aria-label="${searcher.escapeHtml(comment.author)}">
-                  <yt-img-shadow fit="" height="40" width="40" class="style-scope ytd-comment-view-model no-transition" style="background-color: transparent;" loaded="">
-                    <img id="img" draggable="false" class="style-scope yt-img-shadow" alt="" height="40" width="40" src="${thumbnailUrl}">
+                  <yt-img-shadow fit="" height="${avatarSize}" width="${avatarSize}" class="style-scope ytd-comment-view-model no-transition" style="background-color: transparent;" loaded="">
+                    <img id="img" draggable="false" class="style-scope yt-img-shadow" alt="" height="${avatarSize}" width="${avatarSize}" src="${thumbnailUrl}">
                   </yt-img-shadow>
                 </button>
               </a>
             </div>
             <div id="main" class="style-scope ytd-comment-view-model">
+              ${replyIndicator}
               <div id="header" class="style-scope ytd-comment-view-model">
                 <div id="pinned-comment-badge" class="style-scope ytd-comment-view-model"></div>
                 <div id="header-author" class="style-scope ytd-comment-view-model">
@@ -902,13 +920,15 @@ class CommentSearchUI {
    * Add a comment to the results
    * @param {Object} comment - Comment object
    * @param {string} query - Search query for highlighting
+   * @param {boolean} isReply - Whether this is a reply comment
+   * @param {string} parentAuthor - Parent comment author name (for reply indicator)
    */
-  addCommentResult(comment, query, searcher) {
+  addCommentResult(comment, query, searcher, isReply = false, parentAuthor = null) {
     const contentsContainer = this.commentsSection.querySelector('#contents');
     if (!contentsContainer) return;
 
     // Create native-looking comment element
-    const commentElement = this.createNativeCommentElement(comment, query, searcher);
+    const commentElement = this.createNativeCommentElement(comment, query, searcher, isReply, parentAuthor);
 
     // Add some additional styling to make it blend better
     commentElement.style.marginBottom = '16px';
@@ -925,6 +945,39 @@ class CommentSearchUI {
       contentsContainer.insertBefore(commentElement, this.loadingIndicator);
     } else {
       contentsContainer.appendChild(commentElement);
+    }
+
+    // If this comment has replies, add them nested
+    if (comment.replies && comment.replies.length > 0) {
+      const repliesContainer = document.createElement('div');
+      repliesContainer.className = 'quack-replies-container';
+      repliesContainer.style.cssText = `
+        margin-left: 48px;
+        border-left: 2px solid var(--yt-spec-10-percent-layer);
+        padding-left: 12px;
+        margin-top: 8px;
+      `;
+
+      // Create a wrapper to insert replies
+      const replyWrapper = document.createElement('div');
+
+      for (const reply of comment.replies) {
+        const replyElement = this.createNativeCommentElement(reply, query, searcher, true, comment.author);
+        replyElement.style.marginBottom = '12px';
+        replyElement.setAttribute('data-comment-id', reply.id);
+        replyElement.setAttribute('data-comment-author', reply.author);
+        this.setupCommentInteractions(replyElement, reply);
+        replyWrapper.appendChild(replyElement);
+      }
+
+      repliesContainer.appendChild(replyWrapper);
+
+      // Insert replies container after the parent comment
+      if (this.loadingIndicator) {
+        contentsContainer.insertBefore(repliesContainer, this.loadingIndicator);
+      } else {
+        contentsContainer.appendChild(repliesContainer);
+      }
     }
   }
 

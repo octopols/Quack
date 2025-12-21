@@ -2,6 +2,21 @@
 
 All notable changes to Quack are documented here.
 
+## [3.2.0] - 2024-12-22
+
+### Added
+- **Reply Pagination**: Full support for fetching and searching ALL replies across multiple pages
+- Nested reply display: Replies now appear indented under their parent comments
+- Cross-batch reply nesting: Replies are grouped with parents even when arriving in separate batches
+- Enhanced progress reporting: Shows both top-level comments and reply counts
+
+### Technical
+- Added `getReplyCountAndContinuation()` function for reply token extraction
+- Implemented `fetchRepliesForComment()` with pagination support (up to 20 pages per comment)
+- Enhanced `getContinuationToken()` with 5 detection methods for various API response formats
+- Parent comment caching for cross-batch reply association
+- Index-based reply metadata matching
+
 ## [3.1.0] - 2024-12-22
 
 ### Added

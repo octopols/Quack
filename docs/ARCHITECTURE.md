@@ -29,7 +29,7 @@ content.js
 ```
 User Input → content.js → fetcher.js → YouTube API
                 ↓
-         parser.js (normalize)
+         parser.js (normalize + extract reply tokens)
                 ↓
          search.js (filter)
                 ↓
@@ -42,10 +42,14 @@ User Input → content.js → fetcher.js → YouTube API
 2. UI shows loading state
 3. Fetcher extracts YouTube config and continuation token
 4. Fetcher fetches comment pages (paginated)
-5. Parser normalizes each page's data
+5. Parser normalizes each page's data and extracts reply tokens
 6. Search filters comments matching query
-7. UI streams results to DOM progressively
-8. Repeat until all pages fetched
+7. **If searchInReplies enabled:** Fetcher paginates through ALL reply pages for each comment
+8. Parser normalizes reply data and marks as `isReply: true`
+9. Search filters replies matching query
+10. Content.js groups replies with parents using cache
+11. UI streams results to DOM with nested replies
+12. Repeat until all pages fetched
 
 ## Comment Object Structure
 
@@ -59,7 +63,10 @@ User Input → content.js → fetcher.js → YouTube API
   authorThumbnail: [{url: "..."}],
   channelUrl: "https://youtube.com/@username",
   isReply: false,
-  replies: []
+  parentCommentId: "parent_id",  // For replies only
+  replyContinuationToken: "...",  // If comment has replies
+  replyCount: 10,                 // Number of replies
+  replies: []                     // Nested reply objects (when displayed)
 }
 ```
 

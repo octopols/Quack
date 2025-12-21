@@ -178,12 +178,22 @@ function parseComments(data) {
   const comments = [];
 
   try {
+    // Extract reply metadata first (before parsing comments)
+    const replyMetadata = getReplyCountAndContinuation(data);
+
     // Try parsing new format (commentEntityPayload)
     const entities = searchDict(data, 'commentEntityPayload');
     if (entities.length > 0) {
-      for (const entity of entities) {
+      for (let i = 0; i < entities.length; i++) {
+        const entity = entities[i];
         const comment = parseCommentEntity(entity);
         if (comment && comment.text) {
+          // Attach reply metadata by index (same order in API response)
+          const metadata = replyMetadata[i];
+          if (metadata && metadata.replyContinuationToken) {
+            comment.replyCount = metadata.replyCount;
+            comment.replyContinuationToken = metadata.replyContinuationToken;
+          }
           comments.push(comment);
         }
       }
@@ -197,6 +207,12 @@ function parseComments(data) {
       const actualViewModel = vm.commentViewModel || vm;
       const comment = parseCommentViewModel(actualViewModel);
       if (comment && comment.text) {
+        // Attach reply metadata if available
+        const metadata = replyMap.get(comment.id);
+        if (metadata) {
+          comment.replyCount = metadata.replyCount;
+          comment.replyContinuationToken = metadata.replyContinuationToken;
+        }
         comments.push(comment);
       }
     }
@@ -210,6 +226,12 @@ function parseComments(data) {
     for (const renderer of renderers) {
       const comment = parseCommentRenderer(renderer);
       if (comment && comment.text) {
+        // Attach reply metadata if available
+        const metadata = replyMap.get(comment.id);
+        if (metadata) {
+          comment.replyCount = metadata.replyCount;
+          comment.replyContinuationToken = metadata.replyContinuationToken;
+        }
         comments.push(comment);
       }
     }
@@ -222,15 +244,127 @@ function parseComments(data) {
 }
 
 
+function getReplyCountAndContinuation(data) {
+  try {
+    const commentThreads = searchDict(data, 'commentThreadRenderer');
+    const results = [];
+
+    for (let i = 0; i < commentThreads.length; i++) {
+      const thread = commentThreads[i];
+      const result = {
+        index: i,
+        replyCount: 0,
+        replyContinuationToken: null
+      };
+
+      if (thread.replies?.commentRepliesRenderer) {
+        const repliesRenderer = thread.replies.commentRepliesRenderer;
+
+        // Get reply count
+        if (repliesRenderer.moreText) {
+          const replyText = extractText(repliesRenderer.moreText);
+          const match = replyText.match(/(\d+)/);
+          if (match) {
+            result.replyCount = parseInt(match[1], 10);
+          }
+        }
+
+        // Get continuation token for loading replies
+        if (repliesRenderer.subThreads && repliesRenderer.subThreads[0]) {
+          const subThread = repliesRenderer.subThreads[0];
+          if (subThread.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token) {
+            result.replyContinuationToken = subThread.continuationItemRenderer.continuationEndpoint.continuationCommand.token;
+          }
+        }
+      }
+
+      results.push(result);
+    }
+
+    return results;
+  } catch (error) {
+    console.error('[Quack Parser] Error extracting reply continuation:', error);
+    return [];
+  }
+}
+
+
 function getContinuationToken(data) {
   try {
+    // Method 1: Standard continuationEndpoint (most common for top-level comments)
     const continuations = searchDict(data, 'continuationEndpoint');
     if (continuations.length > 0) {
       const continuation = continuations[0];
-      return continuation.continuationCommand?.token || null;
+      const token = continuation.continuationCommand?.token;
+      if (token) {
+        console.log('[Quack Parser] ✅ Found continuation token in continuationEndpoint');
+        return token;
+      }
+    }
+
+    // Method 2: Check continuations array (alternative location)
+    const continuationsArrays = searchDict(data, 'continuations');
+    for (const arr of continuationsArrays) {
+      if (Array.isArray(arr) && arr.length > 0) {
+        const token = arr[0]?.nextContinuationData?.continuation;
+        if (token) {
+          console.log('[Quack Parser] ✅ Found continuation token in continuations array');
+          return token;
+        }
+      }
+    }
+
+    // Method 3: Check subThreads (for reply pagination)
+    const repliesRenderers = searchDict(data, 'commentRepliesRenderer');
+    for (const renderer of repliesRenderers) {
+      if (renderer.subThreads && renderer.subThreads[0]) {
+        const subThread = renderer.subThreads[0];
+        if (subThread.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token) {
+          const token = subThread.continuationItemRenderer.continuationEndpoint.continuationCommand.token;
+          console.log('[Quack Parser] ✅ Found continuation token in subThreads[0]');
+          return token;
+        }
+      }
+    }
+
+    // Method 4: Search for any continuationCommand token broadly
+    const commands = searchDict(data, 'continuationCommand');
+    if (commands.length > 0 && commands[0].token) {
+      console.log('[Quack Parser] ✅ Found continuation token in continuationCommand');
+      return commands[0].token;
+    }
+
+    // Method 5: Check onResponseReceivedEndpoints (common in reply pagination)
+    if (data.onResponseReceivedEndpoints && Array.isArray(data.onResponseReceivedEndpoints)) {
+      for (const endpoint of data.onResponseReceivedEndpoints) {
+        // Look for appendContinuationItemsAction which contains more items
+        if (endpoint.appendContinuationItemsAction) {
+          const items = endpoint.appendContinuationItemsAction.continuationItems;
+          if (items && Array.isArray(items)) {
+            for (const item of items) {
+              // Check for continuationItemRenderer
+              if (item.continuationItemRenderer) {
+                const token = item.continuationItemRenderer.continuationEndpoint?.continuationCommand?.token;
+                if (token) {
+                  return token;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Check for continuationItemRenderer at various levels
+    const contItems = searchDict(data, 'continuationItemRenderer');
+    if (contItems.length > 0) {
+      const token = contItems[0]?.continuationEndpoint?.continuationCommand?.token;
+      if (token) {
+        return token;
+      }
     }
   } catch (error) {
-    // Could not get continuation token
+    console.error('[Quack Parser] ❌ Error getting continuation token:', error);
   }
   return null;
 }
