@@ -283,7 +283,7 @@ function getReplyCountAndContinuation(data) {
 
     return results;
   } catch (error) {
-    console.error('[Quack Parser] Error extracting reply continuation:', error);
+
     return [];
   }
 }
@@ -297,7 +297,7 @@ function getContinuationToken(data) {
       const continuation = continuations[0];
       const token = continuation.continuationCommand?.token;
       if (token) {
-        console.log('[Quack Parser] ✅ Found continuation token in continuationEndpoint');
+
         return token;
       }
     }
@@ -308,7 +308,7 @@ function getContinuationToken(data) {
       if (Array.isArray(arr) && arr.length > 0) {
         const token = arr[0]?.nextContinuationData?.continuation;
         if (token) {
-          console.log('[Quack Parser] ✅ Found continuation token in continuations array');
+
           return token;
         }
       }
@@ -321,7 +321,7 @@ function getContinuationToken(data) {
         const subThread = renderer.subThreads[0];
         if (subThread.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token) {
           const token = subThread.continuationItemRenderer.continuationEndpoint.continuationCommand.token;
-          console.log('[Quack Parser] ✅ Found continuation token in subThreads[0]');
+
           return token;
         }
       }
@@ -330,7 +330,7 @@ function getContinuationToken(data) {
     // Method 4: Search for any continuationCommand token broadly
     const commands = searchDict(data, 'continuationCommand');
     if (commands.length > 0 && commands[0].token) {
-      console.log('[Quack Parser] ✅ Found continuation token in continuationCommand');
+
       return commands[0].token;
     }
 
@@ -364,7 +364,7 @@ function getContinuationToken(data) {
       }
     }
   } catch (error) {
-    console.error('[Quack Parser] ❌ Error getting continuation token:', error);
+
   }
   return null;
 }

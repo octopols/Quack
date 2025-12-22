@@ -47,9 +47,11 @@ User Input → content.js → fetcher.js → YouTube API
 7. **If searchInReplies enabled:** Fetcher paginates through ALL reply pages for each comment
 8. Parser normalizes reply data and marks as `isReply: true`
 9. Search filters replies matching query
+
 10. Content.js groups replies with parents using cache
-11. UI streams results to DOM with nested replies
-12. Repeat until all pages fetched
+11. **Sorter re-orders results** (by Relevance, Date, Replies, etc.)
+12. UI streams results to DOM with nested replies
+13. Repeat until all pages fetched
 
 ## Comment Object Structure
 

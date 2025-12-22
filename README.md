@@ -2,7 +2,7 @@
   <img src="icon.png" alt="Quack Icon" width="128" height="128">
 </div>
 
-![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-3.2.1-blue.svg)
 ![Chrome](https://img.shields.io/badge/Chrome-88%2B-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -21,6 +21,7 @@ Browser extension for searching through paginated YouTube comments. Fetches and 
 - Native YouTube UI integration
 - Settings persistence via Chrome Storage API
 - Real-time search progress metrics
+- **Advanced Sorting**: Filter results by Relevance, Newest, Oldest, Most Replies, Longest, or Author
 
 ## Showcase
 

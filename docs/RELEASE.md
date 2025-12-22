@@ -39,15 +39,15 @@ vim CHANGELOG.md
 
 # Commit and tag
 git add manifest.json CHANGELOG.md
-git commit -m "Bump version to v3.1.0"
-git tag v3.1.0
-git push origin v3.1.0
+git commit -m "Bump version to v3.2.1"
+git tag v3.2.1
+git push origin v3.2.1
 ```
 
 ## Versioning
 
-- **Patch** (3.1.1): Bug fixes
-- **Minor** (3.2.0): New features
+- **Patch** (3.2.1): Bug fixes
+- **Minor** (3.3.0): New features
 - **Major** (4.0.0): Breaking changes
 
 ## Required Secrets

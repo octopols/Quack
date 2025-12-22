@@ -162,6 +162,113 @@ class CommentSearchUI {
   }
 
 
+  injectSortReplacement(onSortCallback) {
+    if (this.sortWrapper) return; // Already injected
+
+    const sortMenu = this.commentsSection ? this.commentsSection.querySelector('#sort-menu') : document.querySelector('#sort-menu');
+    if (!sortMenu) return;
+
+    // Create wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'quack-sort-wrapper';
+    wrapper.style.display = 'none'; // Hidden by default
+    wrapper.innerHTML = `
+      <button class="quack-sort-btn">
+        <div class="quack-sort-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 5H3a1 1 0 000 2h18a1 1 0 100-2Zm-6 6H3a1 1 0 000 2h12a1 1 0 000-2Zm-6 6H3a1 1 0 000 2h6a1 1 0 000-2Z"/></svg>
+        </div>
+        <span>Sort by</span>
+      </button>
+      <div class="quack-sort-dropdown-menu">
+        <div class="quack-sort-item selected" data-value="relevance">
+          <div class="quack-sort-check"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+          <div class="quack-sort-label">Most Relevant</div>
+        </div>
+        <div class="quack-sort-item" data-value="top">
+          <div class="quack-sort-check"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+          <div class="quack-sort-label">Top comments</div>
+        </div>
+        <div class="quack-sort-item" data-value="newest">
+          <div class="quack-sort-check"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+          <div class="quack-sort-label">Newest first</div>
+        </div>
+         <div class="quack-sort-item" data-value="oldest">
+          <div class="quack-sort-check"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+          <div class="quack-sort-label">Oldest first</div>
+        </div>
+         <div class="quack-sort-item" data-value="replies">
+          <div class="quack-sort-check"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+          <div class="quack-sort-label">Most replies</div>
+        </div>
+         <div class="quack-sort-item" data-value="length">
+          <div class="quack-sort-check"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+          <div class="quack-sort-label">Longest</div>
+        </div>
+         <div class="quack-sort-item" data-value="author">
+          <div class="quack-sort-check"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+          <div class="quack-sort-label">Author (A-Z)</div>
+        </div>
+      </div>
+    `;
+
+    // Add click handlers
+    const btn = wrapper.querySelector('.quack-sort-btn');
+    const menu = wrapper.querySelector('.quack-sort-dropdown-menu');
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.classList.toggle('visible');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!wrapper.contains(e.target)) {
+        menu.classList.remove('visible');
+      }
+    });
+
+    const items = wrapper.querySelectorAll('.quack-sort-item');
+    items.forEach(item => {
+      item.addEventListener('click', () => {
+        const val = item.dataset.value;
+        // Update selected visual state
+        items.forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+
+        menu.classList.remove('visible');
+        if (onSortCallback) onSortCallback(val);
+      });
+    });
+
+    // Insert before sort menu so it takes its place when toggled
+    sortMenu.parentNode.insertBefore(wrapper, sortMenu);
+
+    this.sortWrapper = wrapper;
+    this.nativeSortMenu = sortMenu;
+  }
+
+  toggleSortButton(showCustom) {
+    // Re-find elements if reference lost (SPA nav)
+    if (!this.nativeSortMenu || !this.nativeSortMenu.isConnected) {
+      this.nativeSortMenu = this.commentsSection?.querySelector('#sort-menu') || document.querySelector('#sort-menu');
+    }
+
+    if (!this.sortWrapper || !this.nativeSortMenu) return;
+
+    if (showCustom) {
+      this.nativeSortMenu.style.display = 'none';
+      this.sortWrapper.style.display = 'inline-flex';
+    } else {
+      this.nativeSortMenu.style.display = '';
+      this.sortWrapper.style.display = 'none';
+
+      // Reset selection to relevance
+      const items = this.sortWrapper.querySelectorAll('.quack-sort-item');
+      items.forEach(i => i.classList.remove('selected'));
+      this.sortWrapper.querySelector('[data-value="relevance"]')?.classList.add('selected');
+    }
+  }
+
+
   showSettings() {
     if (this.settingsPopup) {
       this.settingsPopup.style.display = 'block';
@@ -1126,5 +1233,21 @@ class CommentSearchUI {
     }
 
     this.isSearchActive = false;
+  }
+
+  /**
+   * Clear all search results from UI
+   */
+  clearResults() {
+    const contentsContainer = this.commentsSection?.querySelector('#contents');
+    if (!contentsContainer) return;
+
+    // Remove all quack result elements
+    const quackResults = contentsContainer.querySelectorAll('ytd-comment-thread-renderer[data-comment-id]');
+    quackResults.forEach(el => el.remove());
+
+    // Remove no results/error messages
+    const messages = contentsContainer.querySelectorAll('.quack-no-results, .quack-error, .quack-results-count');
+    messages.forEach(el => el.remove());
   }
 }

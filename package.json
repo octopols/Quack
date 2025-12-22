@@ -1,6 +1,6 @@
 {
   "name": "youtube-comment-search",
-  "version": "2.0.0",
+  "version": "3.2.1",
   "description": "Chrome extension to search through ALL comments on YouTube videos",
   "scripts": {
     "convert-icons": "node convert-icons.js"

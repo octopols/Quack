@@ -2,6 +2,15 @@
 
 All notable changes to Quack are documented here.
 
+## [3.2.1] - 2025-12-22
+
+### Fixed
+- **Production Cleanup**: Removed all debug console logs for cleaner production output.
+- **Stability**: Added safety checks to fetcher error handling.
+
+### Documentation
+- Added details on the new **Advanced Sorting** features (Relevance, Most Replies, etc.) to README.
+
 ## [3.2.0] - 2024-12-22
 
 ### Added

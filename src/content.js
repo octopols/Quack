@@ -10,7 +10,10 @@ function isYouTubeWatchPage() {
 let ui = null;
 let fetcher = null;
 let searcher = null;
+let sorter = null;
 let currentSearchQuery = '';
+let allMatches = [];  // Store ALL matched comments for sorting
+let currentSortOrder = 'relevance';  // Default sort order
 
 
 /**
@@ -68,6 +71,7 @@ async function init() {
     ui = new CommentSearchUI();
     fetcher = new CommentFetcher();
     searcher = new CommentSearcher();
+    sorter = new CommentSorter();
 
     // Initialize UI
     ui.init();
@@ -79,7 +83,7 @@ async function init() {
     // Attach event listeners
     attachEventListeners();
   } catch (error) {
-    console.error('[Quack] Initialization failed:', error);
+    // Initialization failed, fail silently
   }
 }
 
@@ -165,11 +169,17 @@ function attachEventListeners() {
       }
     };
 
-    caseSensitive.addEventListener('change', updateSettings);
-    searchReplies.addEventListener('change', updateSettings);
-    searchAuthors.addEventListener('change', updateSettings);
     highlightMatches.addEventListener('change', updateSettings);
   }
+
+  // Hijack YouTube's sort dropdown - wait for UI to be ready
+  setTimeout(() => {
+    ui.injectSortReplacement((sortOrder) => {
+
+      currentSortOrder = sortOrder;
+      resortResults(sortOrder);
+    });
+  }, 1000);
 
   // Close settings popup when clicking outside
   document.addEventListener('click', (e) => {
@@ -183,6 +193,76 @@ function attachEventListeners() {
 
   // Handle YouTube navigation (SPA) with multiple detection methods
   setupNavigationDetection();
+}
+
+
+/**
+ * Setup detection for YouTube's sort dropdown changes
+ */
+function setupYouTubeSortDetection() {
+  // Find YouTube's sort dropdown
+  const sortMenu = document.querySelector('yt-sort-filter-sub-menu-renderer yt-dropdown-menu');
+
+  // Early return removed to support lazy loading
+
+
+  // Listen for clicks on sort menu items
+  document.addEventListener('click', (e) => {
+    // Check if click is on a sort menu item
+    const menuItem = e.target.closest('tp-yt-paper-item');
+    if (!menuItem) return;
+
+    // Robust sort menu detection (handles overlay/body movement)
+    const textContent = (menuItem.textContent || '').trim();
+    const isSortMenu = menuItem.closest('yt-sort-filter-sub-menu-renderer') ||
+      textContent.includes('Show featured comments') ||
+      textContent.includes('Show recent comments');
+
+    if (!isSortMenu) return;
+
+    // Only process if we have search results
+    if (allMatches.length === 0) return;
+
+    // Get the text content to determine which sort was selected
+    const itemText = menuItem.textContent.trim();
+
+    let newSortOrder = null;
+
+    if (itemText.includes('Top')) {
+      newSortOrder = 'top';
+    } else if (itemText.includes('Newest')) {
+      newSortOrder = 'newest';
+    }
+
+    if (newSortOrder && newSortOrder !== currentSortOrder) {
+
+      currentSortOrder = newSortOrder;
+
+      // Small delay to let YouTube update its UI
+      setTimeout(() => {
+        resortResults(newSortOrder);
+      }, 100);
+    }
+  }, true); // Use capture to catch events early
+}
+
+
+/**
+ * Re-sort all search results by specified order
+ */
+function resortResults(sortOrder) {
+  if (allMatches.length === 0) return;
+
+  // Sort all matches
+  const sorted = sorter.sortComments(allMatches, sortOrder);
+
+  // Clear existing results
+  ui.clearResults();
+
+  // Re-render in new order
+  for (const comment of sorted) {
+    ui.addCommentResult(comment, currentSearchQuery, searcher);
+  }
 }
 
 
@@ -201,9 +281,13 @@ async function handleSearch(query) {
   // Show loading state (this will also disable search inputs)
   ui.showLoadingState();
 
+  // Enable sort button immediately for dynamic sorting
+  ui.toggleSortButton(true);
+
   try {
-    // Reset searcher
+    // Reset searcher and allMatches
     searcher.reset();
+    allMatches = [];  // Clear previous matches
 
     let matchCount = 0;
     let totalCommentsSearched = 0;
@@ -215,8 +299,7 @@ async function handleSearch(query) {
     // Cache to store parent comments for later reply nesting
     const parentCommentCache = new Map();
 
-    console.log('[Quack] 📋 Settings:', settings);
-    console.log(`[Quack] 🔧 Reply fetching: ${shouldFetchReplies ? 'ENABLED' : 'DISABLED'}`);
+
 
     // Fetch all comments with progressive display
     await fetcher.fetchAllComments(
@@ -236,6 +319,11 @@ async function handleSearch(query) {
         }
 
         const matches = searcher.filterComments(comments, query);
+
+        // Calculate relevance scores for all matches
+        for (const match of matches) {
+          match.relevanceScore = sorter.calculateRelevance(match, query);
+        }
 
         // Separate top-level comments and replies
         const topLevelMatches = matches.filter(m => !m.isReply);
@@ -268,11 +356,13 @@ async function handleSearch(query) {
             if (parent) {
               parent.replies.push(reply);
             } else {
-              // Parent not found at all - show reply standalone
-              ui.addCommentResult(reply, query, searcher, true);
+              // Parent not found - add reply standalone
+              allMatches.push(reply);  // Store in allMatches
+              if (currentSortOrder === 'relevance') {
+                ui.addCommentResult(reply, query, searcher, true);
+              }
               matchCount++;
             }
-          } else {
           }
         }
 
@@ -282,7 +372,15 @@ async function handleSearch(query) {
           if (replies.length > 0) {
             comment.replies = replies;
           }
-          ui.addCommentResult(comment, query, searcher);
+
+          // Store in allMatches (store the parent with its replies attached)
+          if (matched) {
+            allMatches.push(comment);
+          }
+
+          if (currentSortOrder === 'relevance') {
+            ui.addCommentResult(comment, query, searcher);
+          }
 
           // Only count matches, not context parents
           if (matched) {
@@ -294,6 +392,11 @@ async function handleSearch(query) {
       // Pass reply fetching setting
       shouldFetchReplies
     );
+
+    // If using custom sort, re-sort and render on every batch for dynamic updates
+    if (currentSortOrder !== 'relevance') {
+      resortResults(currentSortOrder);
+    }
 
     // Show final results
     ui.showFinalResults(matchCount);
@@ -330,6 +433,7 @@ function handleClearSearch() {
 
   if (ui) {
     ui.clearSearch();
+    ui.toggleSortButton(false); // Restore native sort button
   }
 
   if (searcher) {

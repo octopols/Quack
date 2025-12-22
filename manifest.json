@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Quack",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Search through ALL comments AND replies on any YouTube video. Features full reply pagination and nested display!",
   "author": "Hirnaymay Bhaskar",
   "homepage_url": "https://github.com/yourusername/quack",
@@ -26,6 +26,7 @@
         "src/parser.js",
         "src/fetcher.js",
         "src/search.js",
+        "src/sorter.js",
         "src/ui.js",
         "src/content.js"
       ],

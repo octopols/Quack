@@ -31,6 +31,7 @@ class CommentFetcher {
 
       return null;
     } catch (error) {
+      // Silently ignore errors in production
       return null;
     }
   }
@@ -67,6 +68,7 @@ class CommentFetcher {
 
       return null;
     } catch (error) {
+      // Silently ignore errors in production
       return null;
     }
   }
@@ -99,6 +101,7 @@ class CommentFetcher {
 
       return null;
     } catch (error) {
+      // Silently ignore errors in production
       return null;
     }
   }
@@ -123,6 +126,7 @@ class CommentFetcher {
 
       return null;
     } catch (error) {
+      // Silently ignore errors in production
       return null;
     }
   }
@@ -180,18 +184,18 @@ class CommentFetcher {
 
       while (currentToken && replyPageCount < maxReplyPages) {
         replyPageCount++;
-        console.log(`[Quack Fetcher] 📄 Fetching reply page ${replyPageCount} for comment ${parentCommentId.substring(0, 20)}...`);
+
 
         // Fetch reply page
         const pageData = await this.fetchCommentsPage(currentToken);
         if (!pageData) {
-          console.log(`[Quack Fetcher] ❌ No page data returned`);
+
           break;
         }
 
         // Parse replies from the page
         const replies = parseComments(pageData);
-        console.log(`[Quack Fetcher] ✅ Parsed ${replies.length} replies from page ${replyPageCount}`);
+
 
         // Mark as replies
         replies.forEach(reply => {
@@ -203,9 +207,7 @@ class CommentFetcher {
 
         // Get next continuation token for more replies
         const nextToken = getContinuationToken(pageData);
-        console.log(`[Quack Fetcher] 🔗 Next reply continuation token:`, nextToken ? 'FOUND' : 'NOT FOUND');
         if (!nextToken) {
-          console.log(`[Quack Fetcher] ⏹️ No more reply pages (total pages: ${replyPageCount}, total replies: ${allReplies.length})`);
           break;
         }
 
@@ -215,10 +217,8 @@ class CommentFetcher {
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      console.log(`[Quack Fetcher] 🎯 Finished fetching replies: ${allReplies.length} total replies across ${replyPageCount} pages`);
       return allReplies;
     } catch (error) {
-      console.error('[Quack] Error fetching replies:', error);
       return [];
     }
   }
@@ -230,7 +230,7 @@ class CommentFetcher {
       this.abortController = new AbortController();
 
       // Log reply setting
-      console.log(`[Quack] 🔧 Reply fetching setting: ${shouldFetchReplies ? 'ENABLED ✅' : 'DISABLED ❌'}`);
+
 
       // Extract YouTube config
       this.ytcfg = this.extractYtConfig();
@@ -256,9 +256,7 @@ class CommentFetcher {
       this.fetchedComments = 0;
 
       // Log initial totals
-      console.log('[Quack] 🦆 Starting comment fetch');
-      console.log('[Quack] 📊 Total comments reported by YouTube:', this.totalComments);
-      console.log('[Quack] 📊 Comments fetched so far:', this.fetchedComments);
+
 
       // Get initial continuation token
       let continuationToken = this.getInitialContinuation(initialData);
@@ -283,16 +281,11 @@ class CommentFetcher {
         const comments = parseComments(pageData);
 
         // Log page results
-        console.log(`[Quack] 📄 Page ${pageCount}: Found ${comments.length} comments`);
+
 
         // Log reply token information
-        const commentsWithReplyTokens = comments.filter(c => c.replyContinuationToken);
-        if (commentsWithReplyTokens.length > 0) {
-          console.log(`[Quack] 🔗 Found ${commentsWithReplyTokens.length} comments with reply tokens`);
-          commentsWithReplyTokens.forEach((c, idx) => {
-            console.log(`[Quack]   - Comment ${idx + 1}: ${c.replyCount || '?'} replies (token: ${c.replyContinuationToken ? 'yes' : 'no'})`);
-          });
-        }
+        // Log reply token information (removed)
+
 
         // Add to all comments
         allComments.push(...comments);
@@ -302,41 +295,28 @@ class CommentFetcher {
         const totalWithReplies = this.fetchedComments;
         const progressPercent = this.totalComments > 0 ? ((topLevelComments / this.totalComments) * 100).toFixed(1) : 'N/A';
 
-        console.log(`[Quack] 📈 Total fetched so far: ${totalWithReplies} comments (${topLevelComments} top-level + ${totalWithReplies - topLevelComments} replies)`);
-        console.log(`[Quack] 📊 Top-level progress: ${topLevelComments} / ${this.totalComments} (${progressPercent}%)`);
 
-        console.log('[Quack] 🔄 Step 1: Calling onProgress callback...');
         // Notify progress
         if (onProgress) {
           onProgress(this.fetchedComments, this.totalComments, continuationToken);
         }
-        console.log('[Quack] ✅ Step 1 completed');
 
-        console.log('[Quack] 🔄 Step 2: Calling onBatch callback...');
         // Notify batch ready
         if (onBatch && comments.length > 0) {
           onBatch(comments);
         }
-        console.log('[Quack] ✅ Step 2 completed');
 
-        console.log(`[Quack] 🔄 Step 3: Checking reply fetching (shouldFetchReplies = ${shouldFetchReplies})...`);
         // Fetch replies if setting is enabled (only for top-level comments)
         if (shouldFetchReplies) {
           const commentsWithReplies = comments.filter(c => !c.isReply && c.replyContinuationToken);
-
-          if (commentsWithReplies.length > 0) {
-            console.log(`[Quack] 💬 Fetching replies for ${commentsWithReplies.length} comments...`);
-          }
 
           for (let i = 0; i < commentsWithReplies.length; i++) {
             const comment = commentsWithReplies[i];
 
             if (comment.replyContinuationToken) {
-              console.log(`[Quack] 💬 Fetching replies for comment ${i + 1}/${commentsWithReplies.length} (ID: ${comment.id.substring(0, 20)}...)`);
               const replies = await this.fetchRepliesForComment(comment.id, comment.replyContinuationToken);
 
               if (replies.length > 0) {
-                console.log(`[Quack] ✅ Comment ${i + 1}/${commentsWithReplies.length}: Found ${replies.length} replies`);
                 comment.replies = replies;
                 this.fetchedComments += replies.length;
 
@@ -349,17 +329,10 @@ class CommentFetcher {
                 if (onBatch) {
                   onBatch(replies);
                 }
-              } else {
-                console.log(`[Quack] ⚠️ Comment ${i + 1}/${commentsWithReplies.length}: No replies fetched (expected ${comment.replyCount || '?'})`);
               }
             }
           }
-        } else {
-          console.log('[Quack] ⏭️ Skipping reply fetching (setting disabled)');
         }
-        console.log('[Quack] ✅ Step 3 completed');
-
-        console.log('[Quack] 🔄 Step 4: Getting next continuation token...');
 
         // Get next continuation token
         const nextToken = getContinuationToken(pageData);
