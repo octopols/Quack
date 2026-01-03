@@ -472,53 +472,6 @@ function waitForElement(selector, timeout = 5000) {
 
 
 
-function setupNavigationDetection() {
-  let lastUrl = location.href;
-  let initTimeout = null;
-
-
-  // Intercept History API calls (catches YouTube SPA navigation)
-  const originalPushState = history.pushState;
-  const originalReplaceState = history.replaceState;
-
-  history.pushState = function (...args) {
-    originalPushState.apply(this, args);
-    checkForNavigation();
-  };
-
-  history.replaceState = function (...args) {
-    originalReplaceState.apply(this, args);
-    checkForNavigation();
-  };
-
-  // Listen for popstate events (back/forward navigation)
-  window.addEventListener('popstate', () => {
-    checkForNavigation();
-  });
-
-  function checkForNavigation() {
-    const currentUrl = location.href;
-
-    if (currentUrl !== lastUrl) {
-
-      lastUrl = currentUrl;
-
-      if (isYouTubeWatchPage()) {
-        // Navigated to a watch page - wait longer for DOM to settle
-
-        setTimeout(() => {
-          init();
-        }, 1500); // Increased from 1000ms to 1500ms
-      }
-    }
-  }
-}
-
-function getVideoIdFromUrl(url) {
-  const match = url.match(/[?&]v=([^&]+)/);
-  return match ? match[1] : null;
-}
-
 // Initialize when page is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -532,4 +485,23 @@ if (document.readyState === 'loading') {
     init();
   }
   setupNavigationDetection();
+}
+
+function setupNavigationDetection() {
+  // Use YouTube's native navigation events for reliable SPA detection
+
+  // Cleanup when navigation starts
+  window.addEventListener('yt-navigate-start', () => {
+    cleanup();
+  });
+
+  // Re-initialize when navigation finishes
+  window.addEventListener('yt-navigate-finish', () => {
+    if (isYouTubeWatchPage()) {
+      // Small delay to ensure DOM is fully settled
+      setTimeout(() => {
+        init();
+      }, 1000);
+    }
+  });
 }
