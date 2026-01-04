@@ -176,10 +176,17 @@ class CommentSearchUI {
   }
 
 
-  createSettingsPopup() {
+  createSettingsPopup(settings = {}) {
     const popup = document.createElement('div');
     popup.className = 'quack-settings-popup';
     popup.style.display = 'none';
+
+    // Create checked attributes based on settings
+    const caseSensitiveChecked = settings.caseSensitive ? 'checked' : '';
+    const searchRepliesChecked = settings.searchInReplies ? 'checked' : '';
+    const searchAuthorsChecked = settings.searchInAuthorNames ? 'checked' : '';
+    const highlightMatchesChecked = settings.highlightMatches ? 'checked' : '';
+
     popup.innerHTML = `
       <div class="quack-settings-header">
         <span>Search Settings</span>
@@ -187,19 +194,19 @@ class CommentSearchUI {
       </div>
       <div class="quack-settings-body">
         <label class="quack-setting-item">
-          <input type="checkbox" id="quack-case-sensitive" />
+          <input type="checkbox" id="quack-case-sensitive" ${caseSensitiveChecked} />
           <span>Case sensitive</span>
         </label>
         <label class="quack-setting-item">
-          <input type="checkbox" id="quack-search-replies" />
+          <input type="checkbox" id="quack-search-replies" ${searchRepliesChecked} />
           <span>Search in replies</span>
         </label>
         <label class="quack-setting-item">
-          <input type="checkbox" id="quack-search-authors" />
+          <input type="checkbox" id="quack-search-authors" ${searchAuthorsChecked} />
           <span>Search in author names</span>
         </label>
         <label class="quack-setting-item">
-          <input type="checkbox" id="quack-highlight-matches" />
+          <input type="checkbox" id="quack-highlight-matches" ${highlightMatchesChecked} />
           <span>Highlight matches</span>
         </label>
         <div class="quack-settings-divider"></div>
@@ -363,10 +370,10 @@ class CommentSearchUI {
       return;
     }
 
-    const caseSensitive = document.getElementById('quack-case-sensitive');
-    const searchReplies = document.getElementById('quack-search-replies');
-    const searchAuthors = document.getElementById('quack-search-authors');
-    const highlightMatches = document.getElementById('quack-highlight-matches');
+    const caseSensitive = this.settingsPopup.querySelector('#quack-case-sensitive');
+    const searchReplies = this.settingsPopup.querySelector('#quack-search-replies');
+    const searchAuthors = this.settingsPopup.querySelector('#quack-search-authors');
+    const highlightMatches = this.settingsPopup.querySelector('#quack-highlight-matches');
 
     if (caseSensitive) caseSensitive.checked = settings.caseSensitive;
     if (searchReplies) searchReplies.checked = settings.searchInReplies;

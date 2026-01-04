@@ -96,10 +96,13 @@ async function init() {
 
     // Initialize UI
     ui.init();
-    ui.createSettingsPopup();
 
-    // Populate UI with loaded settings immediately
-    ui.updateSettingsUI(settingsManager.getSettings());
+    // Create settings popup with loaded settings (so checkboxes have correct initial state)
+    const loadedSettings = settingsManager.getSettings();
+    ui.createSettingsPopup(loadedSettings);
+
+    // Also update UI (for toggle buttons)
+    ui.updateSettingsUI(loadedSettings);
 
     // Set initial settings
     searcher.setSettings(settingsManager.getSettings());
@@ -189,6 +192,32 @@ function attachEventListeners() {
         ui.hideSettings();
       });
     }
+
+    // Handle checkbox changes - save settings when toggled
+    ui.settingsPopup.addEventListener('change', async (e) => {
+      if (e.target.type === 'checkbox') {
+        // Query checkboxes from within the popup element itself, not the global document
+        const popup = ui.settingsPopup;
+        const caseSensitive = popup.querySelector('#quack-case-sensitive');
+        const searchReplies = popup.querySelector('#quack-search-replies');
+        const searchAuthors = popup.querySelector('#quack-search-authors');
+        const highlightMatches = popup.querySelector('#quack-highlight-matches');
+
+        const newSettings = {
+          caseSensitive: caseSensitive?.checked || false,
+          searchInReplies: searchReplies?.checked || false,
+          searchInAuthorNames: searchAuthors?.checked || false,
+          highlightMatches: highlightMatches?.checked || false
+        };
+
+        await settingsManager.updateSettings(newSettings);
+
+        // Update searcher with new settings
+        if (searcher) {
+          searcher.setSettings(settingsManager.getSettings());
+        }
+      }
+    });
   }
 
   // Download button dropdown toggle

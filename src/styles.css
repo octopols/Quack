@@ -489,6 +489,12 @@
   cursor: pointer;
   width: 18px;
   height: 18px;
+  /* Ensure checkbox is visible and not overridden by YouTube styles */
+  appearance: auto !important;
+  -webkit-appearance: checkbox !important;
+  accent-color: #3ea6ff;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 /* Settings Divider */
