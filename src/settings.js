@@ -19,6 +19,7 @@ class SettingsManager {
   async init() {
     try {
       const result = await chrome.storage.sync.get('quackSettings');
+
       if (result.quackSettings) {
         this.settings = { ...DEFAULT_SETTINGS, ...result.quackSettings };
       }

@@ -26,6 +26,11 @@ class CommentSearcher {
   commentMatches(comment, query) {
     if (!comment || !query) return false;
 
+    // Strict check: If this is a reply and searching replies is disabled, ignore it completely
+    if (comment.isReply && !this.settings.searchInReplies) {
+      return false;
+    }
+
     // Search in comment text (always enabled)
     if (this.matchesQuery(comment.text, query)) {
       return true;

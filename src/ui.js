@@ -299,12 +299,19 @@ class CommentSearchUI {
    * @param {Object} settings - Current settings
    */
   updateSettingsUI(settings) {
-    if (!this.settingsPopup) return;
+    if (!this.settingsPopup) {
+      return;
+    }
 
-    document.getElementById('quack-case-sensitive').checked = settings.caseSensitive;
-    document.getElementById('quack-search-replies').checked = settings.searchInReplies;
-    document.getElementById('quack-search-authors').checked = settings.searchInAuthorNames;
-    document.getElementById('quack-highlight-matches').checked = settings.highlightMatches;
+    const caseSensitive = document.getElementById('quack-case-sensitive');
+    const searchReplies = document.getElementById('quack-search-replies');
+    const searchAuthors = document.getElementById('quack-search-authors');
+    const highlightMatches = document.getElementById('quack-highlight-matches');
+
+    if (caseSensitive) caseSensitive.checked = settings.caseSensitive;
+    if (searchReplies) searchReplies.checked = settings.searchInReplies;
+    if (searchAuthors) searchAuthors.checked = settings.searchInAuthorNames;
+    if (highlightMatches) highlightMatches.checked = settings.highlightMatches;
   }
 
   /**

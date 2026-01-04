@@ -162,8 +162,11 @@ function parseCommentEntity(entity) {
       replies: []
     };
 
-    // Check if this is a reply
-    if (comment.id && comment.id.includes('.')) {
+
+
+    // Check if this is a reply: Use replyLevel (strongest signal) or ID format
+    if ((properties.replyLevel && Number(properties.replyLevel) > 0) ||
+      (comment.id && comment.id.includes('.'))) {
       comment.isReply = true;
     }
 

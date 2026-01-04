@@ -14,6 +14,7 @@ let sorter = null;
 let currentSearchQuery = '';
 let allMatches = [];  // Store ALL matched comments for sorting
 let currentSortOrder = 'relevance';  // Default sort order
+let isInitializing = false;  // Guard against duplicate init calls
 
 
 /**
@@ -55,6 +56,12 @@ function cleanup() {
 
 
 async function init() {
+  // Guard against duplicate concurrent initializations
+  if (isInitializing) {
+    return;
+  }
+  isInitializing = true;
+
   // Always cleanup first to avoid duplicates
   cleanup();
   try {
@@ -76,14 +83,18 @@ async function init() {
     // Initialize UI
     ui.init();
 
+    // Populate UI with loaded settings immediately
+    ui.updateSettingsUI(settingsManager.getSettings());
+
     // Set initial settings
     searcher.setSettings(settingsManager.getSettings());
-    ui.updateSettingsUI(settingsManager.getSettings());
 
     // Attach event listeners
     attachEventListeners();
   } catch (error) {
-    // Initialization failed, fail silently
+    // Initialization failed silently
+  } finally {
+    isInitializing = false;
   }
 }
 
@@ -153,23 +164,30 @@ function attachEventListeners() {
     const highlightMatches = document.getElementById('quack-highlight-matches');
 
     const updateSettings = async () => {
-      const newSettings = {
-        caseSensitive: caseSensitive.checked,
-        searchInReplies: searchReplies.checked,
-        searchInAuthorNames: searchAuthors.checked,
-        highlightMatches: highlightMatches.checked
-      };
+      try {
+        const newSettings = {
+          caseSensitive: caseSensitive.checked,
+          searchInReplies: searchReplies.checked,
+          searchInAuthorNames: searchAuthors.checked,
+          highlightMatches: highlightMatches.checked
+        };
 
-      await settingsManager.updateSettings(newSettings);
-      searcher.setSettings(newSettings);
+        await settingsManager.updateSettings(newSettings);
+        searcher.setSettings(newSettings);
 
-      // Re-run search if active
-      if (ui.isSearchActive && currentSearchQuery) {
-        handleSearch(currentSearchQuery);
+        // Re-run search if active
+        if (ui.isSearchActive && currentSearchQuery) {
+          handleSearch(currentSearchQuery);
+        }
+      } catch (error) {
+        // Settings save failed silently
       }
     };
 
-    highlightMatches.addEventListener('change', updateSettings);
+    if (caseSensitive) caseSensitive.addEventListener('change', updateSettings);
+    if (searchReplies) searchReplies.addEventListener('change', updateSettings);
+    if (searchAuthors) searchAuthors.addEventListener('change', updateSettings);
+    if (highlightMatches) highlightMatches.addEventListener('change', updateSettings);
   }
 
   // Hijack YouTube's sort dropdown - wait for UI to be ready
@@ -292,8 +310,10 @@ async function handleSearch(query) {
     let matchCount = 0;
     let totalCommentsSearched = 0;
 
-    // Get settings for reply fetching
-    const settings = await settingsManager.getSettings();
+    // Get settings from manager (already synced via checkbox change listeners)
+    const settings = settingsManager.getSettings();
+    searcher.setSettings(settings);
+
     const shouldFetchReplies = settings.searchInReplies;
 
     // Cache to store parent comments for later reply nesting
