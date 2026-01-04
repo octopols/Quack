@@ -131,14 +131,32 @@ function attachEventListeners() {
       }
     });
 
-    // Clear search on Escape
-    ui.searchBox.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        handleClearSearch();
+    // Show search history on focus
+    ui.searchBox.addEventListener('focus', () => {
+      const history = settingsManager.getHistory();
+      if (history.length > 0) {
+        ui.showSearchHistory(history);
       }
     });
+
+    // Hide search history on blur (with delay for click to register)
+    ui.searchBox.addEventListener('blur', () => {
+      setTimeout(() => ui.hideSearchHistory(), 200);
+    });
   }
+
+  // Search history item click (delegated)
+  document.addEventListener('click', (e) => {
+    const historyItem = e.target.closest('.quack-history-item');
+    if (historyItem) {
+      const query = historyItem.dataset.query;
+      if (query && ui.searchBox) {
+        ui.searchBox.value = query;
+        ui.hideSearchHistory();
+        handleSearch(query);
+      }
+    }
+  });
 
   // Search button
   if (ui.searchButton) {
@@ -202,10 +220,88 @@ function attachEventListeners() {
     });
   }
 
+  // CSV Download handlers
+  const fetchAllCsvBtn = document.getElementById('quack-fetch-all-csv');
+  if (fetchAllCsvBtn) {
+    fetchAllCsvBtn.addEventListener('click', async () => {
+      if (allFetchedComments.length > 0) {
+        const videoTitle = getVideoTitle();
+        const filename = `${videoTitle}_all_comments.csv`;
+        ui.downloadAsCsv(allFetchedComments, filename);
+        ui.hideDownloadMenu();
+      } else {
+        await handleFetchAllCommentsCsv();
+      }
+    });
+  }
+
+  const downloadResultsCsvBtn = document.getElementById('quack-download-results-csv');
+  if (downloadResultsCsvBtn) {
+    downloadResultsCsvBtn.addEventListener('click', () => {
+      ui.hideDownloadMenu();
+      if (allMatchedItems.length > 0) {
+        const videoTitle = getVideoTitle();
+        const searchTerm = currentSearchQuery.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+        const filename = `${videoTitle}_search_${searchTerm}.csv`;
+        ui.downloadAsCsv(allMatchedItems, filename);
+      }
+    });
+  }
+
   // Close download menu when clicking outside
   document.addEventListener('click', (e) => {
     if (ui.downloadMenu && !ui.downloadMenu.contains(e.target) && !ui.downloadButton.contains(e.target)) {
       ui.hideDownloadMenu();
+    }
+  });
+
+  // Global Esc key handler
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      // Check if user is typing in a different input (e.g. YouTube search or comment box)
+      const activeEl = document.activeElement;
+      const isInput = activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable;
+      // If typing in OUR search box, let the local handler deal with it (or bubble up)
+      const isOurSearchBox = activeEl === ui.searchBox;
+
+      // If typing in another input, don't interfere
+      if (isInput && !isOurSearchBox) {
+        return;
+      }
+
+      // If menus are open or search is active
+      if (ui.isSearchActive ||
+        (ui.settingsPopup && ui.settingsPopup.style.display === 'block') ||
+        (ui.downloadMenu && ui.downloadMenu.classList.contains('visible'))) {
+
+        e.preventDefault();
+
+        // 1. Close menus if open
+        let menuClosed = false;
+        if (ui.settingsPopup && ui.settingsPopup.style.display === 'block') {
+          ui.hideSettings();
+          menuClosed = true;
+        }
+
+        if (ui.downloadMenu && ui.downloadMenu.classList.contains('visible')) {
+          ui.hideDownloadMenu();
+          menuClosed = true;
+        }
+
+        if (menuClosed) return;
+
+        // 2. Hide search history
+        ui.hideSearchHistory();
+
+        // 3. Clear search if active or has text
+        if (ui.isSearchActive || (ui.searchBox && ui.searchBox.value.trim() !== '')) {
+          handleClearSearch();
+          // Blur search box to return focus to page
+          if (isOurSearchBox) {
+            ui.searchBox.blur();
+          }
+        }
+      }
     }
   });
 
@@ -305,6 +401,25 @@ function attachEventListeners() {
 
   // Handle YouTube navigation (SPA) with multiple detection methods
   setupNavigationDetection();
+
+  // Cancel search button (delegated event since it's dynamically created)
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'quack-cancel-search') {
+      handleCancelSearch();
+    }
+  });
+}
+
+
+/**
+ * Handle cancel search - abort fetching and show partial results
+ */
+function handleCancelSearch() {
+  if (fetcher) {
+    fetcher.abort();
+  }
+  ui.showFinalResults(allMatchedItems.length);
+  ui.updateDownloadButtons(allMatchedItems.length);
 }
 
 
@@ -352,6 +467,46 @@ async function handleFetchAllComments() {
     ui.downloadAsJson(allFetchedComments, filename);
 
     // Reset dropdown to normal state
+    ui.hideDownloadLoading();
+    ui.hideDownloadMenu();
+
+  } catch (error) {
+    ui.hideDownloadLoading();
+    ui.hideDownloadMenu();
+  }
+}
+
+
+/**
+ * Fetch all comments and download as CSV
+ */
+async function handleFetchAllCommentsCsv() {
+  ui.showDownloadLoading();
+
+  if (fetcher) {
+    fetcher.abort();
+  }
+
+  try {
+    allFetchedComments = [];
+    let commentCount = 0;
+
+    await fetcher.fetchAllComments(
+      (checked, total) => {
+        ui.updateDownloadProgress(commentCount);
+      },
+      (comments) => {
+        allFetchedComments.push(...comments);
+        commentCount = allFetchedComments.length;
+        ui.updateDownloadProgress(commentCount);
+      },
+      true
+    );
+
+    const videoTitle = getVideoTitle();
+    const filename = `${videoTitle}_all_comments.csv`;
+    ui.downloadAsCsv(allFetchedComments, filename);
+
     ui.hideDownloadLoading();
     ui.hideDownloadMenu();
 
@@ -586,11 +741,19 @@ async function handleSearch(query) {
       resortResults(currentSortOrder);
     }
 
+    // Check if search was aborted or cleared during fetch
+    if (!currentSearchQuery || (ui && !ui.isSearchActive)) {
+      return;
+    }
+
     // Show final results (count of actual matched comments)
     ui.showFinalResults(allMatchedItems.length);
 
     // Update download buttons with counts
     ui.updateDownloadButtons(allMatchedItems.length);
+
+    // Save to search history
+    settingsManager.addToHistory(query);
 
   } catch (error) {
     // Try fallback to DOM extraction
@@ -617,6 +780,9 @@ async function handleSearch(query) {
 
 function handleClearSearch() {
   currentSearchQuery = '';
+  allFetchedComments = []; // Clear cached comments to force fresh fetch on next search
+  allMatches = [];
+  allMatchedItems = [];
 
   if (fetcher) {
     fetcher.abort();

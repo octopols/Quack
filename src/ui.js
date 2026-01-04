@@ -93,23 +93,26 @@ class CommentSearchUI {
     const searchContainer = document.createElement('div');
     searchContainer.className = 'quack-search-container';
     searchContainer.innerHTML = `
-      <div class="quack-search-box">
-        <input 
-          type="text" 
-          id="quack-search-input" 
-          class="quack-search-input"
-          placeholder="Search comments..."
-          autocomplete="off"
-        />
-        <div class="quack-search-toggles">
-          <button id="quack-regex-toggle" class="quack-toggle-btn" title="Use Regular Expression (Alt+R)">.*</button>
-          <button id="quack-word-toggle" class="quack-toggle-btn" title="Match Whole Word (Alt+W)"><span class="quack-whole-word">ab</span></button>
+      <div class="quack-search-wrapper">
+        <div class="quack-search-box">
+          <input 
+            type="text" 
+            id="quack-search-input" 
+            class="quack-search-input"
+            placeholder="Search comments..."
+            autocomplete="off"
+          />
+          <div class="quack-search-toggles">
+            <button id="quack-regex-toggle" class="quack-toggle-btn" title="Use Regular Expression (Alt+R)">.*</button>
+            <button id="quack-word-toggle" class="quack-toggle-btn" title="Match Whole Word (Alt+W)"><span class="quack-whole-word">ab</span></button>
+          </div>
+          <button id="quack-search-button" class="quack-search-button" title="Search">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+          </button>
         </div>
-        <button id="quack-search-button" class="quack-search-button" title="Search">
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-          </svg>
-        </button>
+        <div id="quack-search-history" class="quack-search-history"></div>
       </div>
       <div class="quack-download-wrapper">
         <button id="quack-download-button" class="quack-icon-button" title="Export Comments">
@@ -123,6 +126,7 @@ class CommentSearchUI {
             <span id="quack-download-progress">Fetching comments...</span>
           </div>
           <div id="quack-download-options">
+            <div class="quack-dropdown-section-title">JSON Format</div>
             <button id="quack-fetch-all" class="quack-dropdown-item">
               <span>Download All Comments</span>
               <span class="quack-item-hint">Fetch & export</span>
@@ -130,6 +134,16 @@ class CommentSearchUI {
             <button id="quack-download-results" class="quack-dropdown-item" disabled>
               <span>Download Search Results</span>
               <span class="quack-item-count" id="quack-results-count"></span>
+            </button>
+            <div class="quack-dropdown-divider"></div>
+            <div class="quack-dropdown-section-title">CSV Format</div>
+            <button id="quack-fetch-all-csv" class="quack-dropdown-item">
+              <span>Download All (CSV)</span>
+              <span class="quack-item-hint">Fetch & export</span>
+            </button>
+            <button id="quack-download-results-csv" class="quack-dropdown-item" disabled>
+              <span>Download Results (CSV)</span>
+              <span class="quack-item-count" id="quack-results-count-csv"></span>
             </button>
           </div>
         </div>
@@ -188,6 +202,13 @@ class CommentSearchUI {
           <input type="checkbox" id="quack-highlight-matches" />
           <span>Highlight matches</span>
         </label>
+        <div class="quack-settings-divider"></div>
+        <div class="quack-shortcuts-section">
+          <div class="quack-shortcuts-title">Keyboard Shortcuts</div>
+          <div class="quack-shortcut-item"><kbd>Alt+R</kbd> Toggle regex</div>
+          <div class="quack-shortcut-item"><kbd>Alt+W</kbd> Toggle whole word</div>
+          <div class="quack-shortcut-item"><kbd>Esc</kbd> Clear search</div>
+        </div>
       </div>
     `;
 
@@ -397,18 +418,63 @@ class CommentSearchUI {
   }
 
   /**
+   * Show search history dropdown
+   * @param {Array} history - Array of recent search queries
+   */
+  showSearchHistory(history) {
+    const historyEl = document.getElementById('quack-search-history');
+    if (!historyEl) return;
+
+    if (!history || history.length === 0) {
+      historyEl.innerHTML = '<div class="quack-history-empty">No search history</div>';
+    } else {
+      historyEl.innerHTML = history.map(query => `
+        <div class="quack-history-item" data-query="${query.replace(/"/g, '&quot;')}">
+          <span class="quack-history-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+            </svg>
+          </span>
+          <span>${query}</span>
+        </div>
+      `).join('');
+    }
+
+    historyEl.classList.add('visible');
+  }
+
+  /**
+   * Hide search history dropdown
+   */
+  hideSearchHistory() {
+    const historyEl = document.getElementById('quack-search-history');
+    if (historyEl) {
+      historyEl.classList.remove('visible');
+    }
+  }
+
+  /**
    * Update download button states and counts
    * @param {number} filteredCount - Number of filtered/matched comments
    */
   updateDownloadButtons(filteredCount) {
     const countEl = document.getElementById('quack-results-count');
+    const countElCsv = document.getElementById('quack-results-count-csv');
 
     if (countEl) {
       countEl.textContent = filteredCount > 0 ? `(${filteredCount})` : '';
     }
+    if (countElCsv) {
+      countElCsv.textContent = filteredCount > 0 ? `(${filteredCount})` : '';
+    }
 
     if (this.downloadResultsBtn) {
       this.downloadResultsBtn.disabled = filteredCount === 0;
+    }
+
+    const csvResultsBtn = document.getElementById('quack-download-results-csv');
+    if (csvResultsBtn) {
+      csvResultsBtn.disabled = filteredCount === 0;
     }
   }
 
@@ -509,6 +575,41 @@ class CommentSearchUI {
   }
 
   /**
+   * Download data as CSV file
+   * @param {Array} data - Array of comments to download
+   * @param {string} filename - Filename for the download
+   */
+  downloadAsCsv(data, filename) {
+    // CSV header
+    const headers = ['Author', 'Text', 'Likes', 'Published Time', 'Is Reply', 'Reply Count'];
+
+    // Convert to CSV rows
+    const rows = data.map(comment => {
+      const text = (comment.text || '').replace(/"/g, '""').replace(/\n/g, ' ');
+      return [
+        `"${(comment.author || '').replace(/"/g, '""')}"`,
+        `"${text}"`,
+        comment.likes || '0',
+        `"${(comment.publishedTime || '').replace(/"/g, '""')}"`,
+        comment.isReply ? 'Yes' : 'No',
+        comment.replyCount || 0
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
    * Clear comments section and show loading state
    */
   showLoadingState() {
@@ -521,14 +622,17 @@ class CommentSearchUI {
     }
 
     // Save original comments (if not already saved)
-    if (!this.originalComments) {
+    if (!this.originalCommentsFragment) {
       const contentsContainer = this.commentsSection.querySelector('#contents');
-      if (contentsContainer) {
-        this.originalComments = contentsContainer.cloneNode(true);
+      if (contentsContainer && contentsContainer.childNodes.length > 0) {
+        this.originalCommentsFragment = document.createDocumentFragment();
+        while (contentsContainer.firstChild) {
+          this.originalCommentsFragment.appendChild(contentsContainer.firstChild);
+        }
       }
     }
 
-    // Clear comments
+    // Clear comments (if any remain or if Fragment was already saved)
     const contentsContainer = this.commentsSection.querySelector('#contents');
     if (contentsContainer) {
       contentsContainer.innerHTML = '';
@@ -569,10 +673,12 @@ class CommentSearchUI {
         <div>Searching comments...</div>
         <div id="quack-loading-progress">Checked 0 of 0 total comments</div>
       </div>
+      <button class="quack-cancel-btn" id="quack-cancel-search">Cancel</button>
     `;
 
     contentsContainer.appendChild(loader);
     this.loadingIndicator = loader;
+    this.cancelButton = loader.querySelector('#quack-cancel-search');
   }
 
   /**
@@ -1335,7 +1441,11 @@ class CommentSearchUI {
     const message = document.createElement('div');
     message.className = 'quack-no-results';
     message.innerHTML = `
-      <div class="quack-no-results-icon">🔍</div>
+      <div class="quack-no-results-icon">
+        <svg viewBox="0 0 24 24" width="48" height="48">
+          <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+      </div>
       <div class="quack-no-results-text">No comments match your search</div>
       <div class="quack-no-results-hint">Try different keywords or adjust your search settings</div>
     `;
@@ -1370,12 +1480,14 @@ class CommentSearchUI {
    * Restore original comments
    */
   restoreOriginalComments() {
-    if (!this.originalComments || !this.commentsSection) return;
+    if (!this.originalCommentsFragment || !this.commentsSection) return;
 
     const contentsContainer = this.commentsSection.querySelector('#contents');
     if (contentsContainer) {
       contentsContainer.innerHTML = '';
-      contentsContainer.appendChild(this.originalComments.cloneNode(true));
+      contentsContainer.appendChild(this.originalCommentsFragment);
+      // Reset fragment so next search grabs fresh comments
+      this.originalCommentsFragment = null;
     }
 
     this.isSearchActive = false;

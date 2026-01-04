@@ -11,6 +11,57 @@
   gap: 8px;
 }
 
+.quack-search-wrapper {
+  position: relative;
+}
+
+/* Search History Dropdown */
+.quack-search-history {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background-color: var(--yt-spec-menu-background);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 10001;
+  overflow: hidden;
+}
+
+.quack-search-history.visible {
+  display: block;
+}
+
+.quack-history-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: var(--yt-spec-text-primary);
+  font-size: 13px;
+  transition: background-color 0.1s;
+}
+
+.quack-history-item:hover {
+  background-color: var(--yt-spec-badge-chip-background);
+}
+
+.quack-history-icon {
+  margin-right: 12px;
+  color: var(--yt-spec-text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.quack-history-empty {
+  padding: 12px 16px;
+  color: var(--yt-spec-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
 .quack-search-box {
   display: flex;
   align-items: center;
@@ -247,6 +298,21 @@
   font-size: 11px;
 }
 
+.quack-dropdown-section-title {
+  padding: 6px 16px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--yt-spec-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quack-dropdown-divider {
+  height: 1px;
+  background-color: var(--yt-spec-10-percent-layer);
+  margin: 4px 0;
+}
+
 .quack-item-count {
   color: var(--yt-spec-text-secondary);
   font-size: 12px;
@@ -362,6 +428,45 @@
 
 .quack-settings-body {
   padding: 12px;
+}
+
+.quack-settings-divider {
+  height: 1px;
+  background-color: var(--yt-spec-10-percent-layer);
+  margin: 8px 0;
+}
+
+.quack-shortcuts-section {
+  padding: 8px;
+}
+
+.quack-shortcuts-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--yt-spec-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.quack-shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--yt-spec-text-primary);
+}
+
+.quack-shortcut-item kbd {
+  background-color: var(--yt-spec-badge-chip-background);
+  border: 1px solid var(--yt-spec-10-percent-layer);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: "Roboto Mono", monospace;
+  font-size: 11px;
+  min-width: 50px;
+  text-align: center;
 }
 
 .quack-setting-item {
@@ -481,6 +586,36 @@
   font-size: 13px;
 }
 
+/* No Results Message */
+.quack-no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--yt-spec-text-secondary);
+}
+
+.quack-no-results-icon {
+  margin-bottom: 16px;
+  color: var(--yt-spec-text-disabled);
+  opacity: 0.5;
+}
+
+.quack-no-results-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--yt-spec-text-primary);
+  margin-bottom: 8px;
+}
+
+.quack-no-results-hint {
+  font-size: 13px;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
 /* Search Results Enhancements - Let YouTube's native CSS handle styling */
 .quack-search-active ytd-comment-thread-renderer {
   animation: quack-fadeIn 0.3s ease-out;
@@ -509,6 +644,29 @@ ytd-button-renderer {
 .quack-loading-indicator {
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Cancel search button */
+.quack-cancel-btn {
+  background-color: transparent;
+  border: 1px solid var(--yt-spec-text-secondary);
+  color: var(--yt-spec-text-secondary);
+  padding: 8px 16px;
+  border-radius: 18px;
+  font-family: "Roboto", "Arial", sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.quack-cancel-btn:hover {
+  background-color: rgba(255, 0, 0, 0.1);
+  border-color: #f44336;
+  color: #f44336;
 }
 
 /* Ensure search result comments show full text without truncation */

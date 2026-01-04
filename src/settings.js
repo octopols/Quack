@@ -7,7 +7,8 @@ const DEFAULT_SETTINGS = {
   searchInAuthorNames: false,
   highlightMatches: true,
   useRegex: false,
-  wholeWord: false
+  wholeWord: false,
+  searchHistory: []
 };
 
 
@@ -54,6 +55,36 @@ class SettingsManager {
 
   async resetSettings() {
     return this.updateSettings(DEFAULT_SETTINGS);
+  }
+
+
+  /**
+   * Add a search query to history (max 5 items, no duplicates)
+   */
+  async addToHistory(query) {
+    if (!query || query.trim() === '') return;
+
+    const trimmed = query.trim();
+    let history = this.settings.searchHistory || [];
+
+    // Remove if already exists (to move to top)
+    history = history.filter(h => h !== trimmed);
+
+    // Add to beginning
+    history.unshift(trimmed);
+
+    // Keep only last 5
+    history = history.slice(0, 5);
+
+    await this.updateSettings({ searchHistory: history });
+  }
+
+
+  /**
+   * Get search history
+   */
+  getHistory() {
+    return this.settings.searchHistory || [];
   }
 
 
