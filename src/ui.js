@@ -158,6 +158,7 @@ class CommentSearchUI {
     this.downloadMenu = searchContainer.querySelector('#quack-download-menu');
     this.fetchAllBtn = searchContainer.querySelector('#quack-fetch-all');
     this.downloadResultsBtn = searchContainer.querySelector('#quack-download-results');
+    this.settingsPopup = null;
   }
 
 
@@ -194,6 +195,19 @@ class CommentSearchUI {
     this.settingsPopup = popup;
   }
 
+  /**
+   * Position settings popup near the settings button
+   */
+  positionSettingsPopup() {
+    if (!this.settingsButton || !this.settingsPopup) return;
+
+    const rect = this.settingsButton.getBoundingClientRect();
+    const scrollX = window.scrollX || window.pageXOffset;
+    const scrollY = window.scrollY || window.pageYOffset;
+
+    this.settingsPopup.style.top = (rect.bottom + scrollY + 5) + 'px';
+    this.settingsPopup.style.left = (rect.left + scrollX - 200) + 'px';
+  }
 
   injectSortReplacement(onSortCallback) {
     if (this.sortWrapper) return; // Already injected
@@ -316,16 +330,7 @@ class CommentSearchUI {
     }
   }
 
-  /**
-   * Position settings popup near the settings button
-   */
-  positionSettingsPopup() {
-    if (!this.settingsButton || !this.settingsPopup) return;
 
-    const rect = this.settingsButton.getBoundingClientRect();
-    this.settingsPopup.style.top = (rect.bottom + 5) + 'px';
-    this.settingsPopup.style.left = (rect.left - 200) + 'px';
-  }
 
   /**
    * Update settings checkboxes

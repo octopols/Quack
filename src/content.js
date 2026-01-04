@@ -94,6 +94,7 @@ async function init() {
 
     // Initialize UI
     ui.init();
+    ui.createSettingsPopup();
 
     // Populate UI with loaded settings immediately
     ui.updateSettingsUI(settingsManager.getSettings());
@@ -201,7 +202,7 @@ function attachEventListeners() {
 
   // Close download menu when clicking outside
   document.addEventListener('click', (e) => {
-    if (ui.downloadMenu && !ui.downloadMenu.contains(e.target) && e.target !== ui.downloadButton) {
+    if (ui.downloadMenu && !ui.downloadMenu.contains(e.target) && !ui.downloadButton.contains(e.target)) {
       ui.hideDownloadMenu();
     }
   });
@@ -295,7 +296,7 @@ function attachEventListeners() {
     if (ui.settingsPopup &&
       ui.settingsPopup.style.display === 'block' &&
       !ui.settingsPopup.contains(e.target) &&
-      e.target !== ui.settingsButton) {
+      !ui.settingsButton.contains(e.target)) {
       ui.hideSettings();
     }
   });

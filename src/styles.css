@@ -319,7 +319,7 @@
 
 /* Settings Popup */
 .quack-settings-popup {
-  position: fixed;
+  position: absolute;
   width: 280px;
   background-color: var(--yt-spec-menu-background);
   border: 1px solid var(--yt-spec-10-percent-layer);
