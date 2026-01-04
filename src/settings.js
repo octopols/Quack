@@ -5,7 +5,9 @@ const DEFAULT_SETTINGS = {
   caseSensitive: false,
   searchInReplies: true,
   searchInAuthorNames: false,
-  highlightMatches: true
+  highlightMatches: true,
+  useRegex: false,
+  wholeWord: false
 };
 
 

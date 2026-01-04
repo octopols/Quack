@@ -88,6 +88,89 @@
   color: var(--yt-spec-text-secondary);
 }
 
+/* Search Mode Toggle Buttons */
+.quack-search-toggles {
+  display: flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.quack-toggle-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--yt-spec-text-secondary);
+  font-family: "Roboto Mono", "Consolas", monospace;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quack-toggle-btn:hover {
+  background-color: var(--yt-spec-badge-chip-background);
+  color: var(--yt-spec-text-primary);
+}
+
+.quack-toggle-btn.active {
+  background-color: var(--yt-spec-call-to-action);
+  color: #fff;
+  border-color: var(--yt-spec-call-to-action);
+}
+
+.quack-toggle-btn.active:hover {
+  background-color: #0553d1;
+  border-color: #0553d1;
+}
+
+/* Whole word button styling */
+.quack-toggle-btn .quack-whole-word {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Error state for invalid regex */
+.quack-search-input.quack-regex-error {
+  border-color: #f44336 !important;
+  background-color: rgba(244, 67, 54, 0.1);
+}
+
+.quack-search-box.quack-regex-error {
+  border-color: #f44336 !important;
+}
+
+.quack-regex-error-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #f44336;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  margin-bottom: 8px;
+  z-index: 10001;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.quack-regex-error-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #f44336;
+}
+
 .quack-settings-button {
   background: transparent;
   border: none;

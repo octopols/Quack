@@ -5,6 +5,7 @@ class CommentSearcher {
     this.currentQuery = '';
     this.settings = {};
     this.matchCount = 0;
+    this.lastRegexError = null;
   }
 
 
@@ -13,13 +14,69 @@ class CommentSearcher {
   }
 
 
+  /**
+   * Escape special regex characters for literal matching
+   */
+  escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+
+  /**
+   * Build regex pattern based on settings
+   * @returns {RegExp|null} Returns regex or null if invalid
+   */
+  buildPattern(query) {
+    this.lastRegexError = null;
+
+    try {
+      let pattern = this.settings.useRegex ? query : this.escapeRegex(query);
+
+      if (this.settings.wholeWord) {
+        pattern = `\\b${pattern}\\b`;
+      }
+
+      const flags = this.settings.caseSensitive ? 'g' : 'gi';
+      return new RegExp(pattern, flags);
+    } catch (e) {
+      this.lastRegexError = e.message;
+      return null;
+    }
+  }
+
+
+  /**
+   * Check if text matches query based on current settings
+   */
   matchesQuery(text, query) {
     if (!text || !query) return false;
 
-    const searchText = this.settings.caseSensitive ? text : text.toLowerCase();
-    const searchQuery = this.settings.caseSensitive ? query : query.toLowerCase();
+    const regex = this.buildPattern(query);
 
-    return searchText.includes(searchQuery);
+    if (regex) {
+      return regex.test(text);
+    } else {
+      // Fallback to simple includes if regex is invalid
+      const searchText = this.settings.caseSensitive ? text : text.toLowerCase();
+      const searchQuery = this.settings.caseSensitive ? query : query.toLowerCase();
+      return searchText.includes(searchQuery);
+    }
+  }
+
+
+  /**
+   * Check if there's a regex error
+   */
+  hasRegexError() {
+    return this.lastRegexError !== null;
+  }
+
+
+  /**
+   * Get the last regex error message
+   */
+  getRegexError() {
+    return this.lastRegexError;
   }
 
 
@@ -75,35 +132,42 @@ class CommentSearcher {
   }
 
 
-
-
   highlightMatches(text, query) {
     if (!this.settings.highlightMatches || !query || !text) {
       return this.escapeHtml(text);
     }
 
-    const searchQuery = this.settings.caseSensitive ? query : query.toLowerCase();
-    const searchText = this.settings.caseSensitive ? text : text.toLowerCase();
+    const regex = this.buildPattern(query);
+
+    if (!regex) {
+      // Fallback for invalid regex
+      return this.escapeHtml(text);
+    }
+
+    // Reset regex lastIndex for global matching
+    regex.lastIndex = 0;
 
     let result = '';
     let lastIndex = 0;
+    let match;
 
-    while (true) {
-      const index = searchText.indexOf(searchQuery, lastIndex);
-      if (index === -1) {
-        result += this.escapeHtml(text.substring(lastIndex));
-        break;
-      }
-
+    while ((match = regex.exec(text)) !== null) {
       // Add text before match
-      result += this.escapeHtml(text.substring(lastIndex, index));
+      result += this.escapeHtml(text.substring(lastIndex, match.index));
 
       // Add highlighted match
-      const match = text.substring(index, index + query.length);
-      result += `<mark class="quack-highlight">${this.escapeHtml(match)}</mark>`;
+      result += `<mark class="quack-highlight">${this.escapeHtml(match[0])}</mark>`;
 
-      lastIndex = index + query.length;
+      lastIndex = match.index + match[0].length;
+
+      // Prevent infinite loop on zero-length matches
+      if (match[0].length === 0) {
+        regex.lastIndex++;
+      }
     }
+
+    // Add remaining text
+    result += this.escapeHtml(text.substring(lastIndex));
 
     return result;
   }
@@ -119,5 +183,6 @@ class CommentSearcher {
   reset() {
     this.currentQuery = '';
     this.matchCount = 0;
+    this.lastRegexError = null;
   }
 }

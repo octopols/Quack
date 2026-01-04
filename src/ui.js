@@ -101,6 +101,10 @@ class CommentSearchUI {
           placeholder="Search comments..."
           autocomplete="off"
         />
+        <div class="quack-search-toggles">
+          <button id="quack-regex-toggle" class="quack-toggle-btn" title="Use Regular Expression (Alt+R)">.*</button>
+          <button id="quack-word-toggle" class="quack-toggle-btn" title="Match Whole Word (Alt+W)"><span class="quack-whole-word">ab</span></button>
+        </div>
         <button id="quack-search-button" class="quack-search-button" title="Search">
           <svg viewBox="0 0 24 24" width="20" height="20">
             <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -125,6 +129,8 @@ class CommentSearchUI {
     this.searchBox = searchContainer.querySelector('#quack-search-input');
     this.searchButton = searchContainer.querySelector('#quack-search-button');
     this.settingsButton = searchContainer.querySelector('#quack-settings-button');
+    this.regexToggle = searchContainer.querySelector('#quack-regex-toggle');
+    this.wholeWordToggle = searchContainer.querySelector('#quack-word-toggle');
   }
 
 
@@ -312,6 +318,49 @@ class CommentSearchUI {
     if (searchReplies) searchReplies.checked = settings.searchInReplies;
     if (searchAuthors) searchAuthors.checked = settings.searchInAuthorNames;
     if (highlightMatches) highlightMatches.checked = settings.highlightMatches;
+
+    // Update toggle buttons
+    this.updateToggleButtons(settings);
+  }
+
+  /**
+   * Update toggle button visual states
+   */
+  updateToggleButtons(settings) {
+    if (this.regexToggle) {
+      this.regexToggle.classList.toggle('active', settings.useRegex);
+    }
+    if (this.wholeWordToggle) {
+      this.wholeWordToggle.classList.toggle('active', settings.wholeWord);
+    }
+  }
+
+  /**
+   * Show regex error state on input
+   */
+  showRegexError(errorMessage) {
+    if (!this.searchBox) return;
+
+    const searchBoxContainer = this.searchBox.closest('.quack-search-box');
+    if (searchBoxContainer) {
+      searchBoxContainer.classList.add('quack-regex-error');
+    }
+    this.searchBox.classList.add('quack-regex-error');
+    this.searchBox.title = `Invalid regex: ${errorMessage}`;
+  }
+
+  /**
+   * Clear regex error state
+   */
+  clearRegexError() {
+    if (!this.searchBox) return;
+
+    const searchBoxContainer = this.searchBox.closest('.quack-search-box');
+    if (searchBoxContainer) {
+      searchBoxContainer.classList.remove('quack-regex-error');
+    }
+    this.searchBox.classList.remove('quack-regex-error');
+    this.searchBox.title = '';
   }
 
   /**

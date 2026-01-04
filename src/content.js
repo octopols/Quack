@@ -190,6 +190,52 @@ function attachEventListeners() {
     if (highlightMatches) highlightMatches.addEventListener('change', updateSettings);
   }
 
+  // Regex toggle button
+  if (ui.regexToggle) {
+    ui.regexToggle.addEventListener('click', async () => {
+      const settings = settingsManager.getSettings();
+      settings.useRegex = !settings.useRegex;
+      await settingsManager.updateSettings(settings);
+      searcher.setSettings(settings);
+      ui.updateToggleButtons(settings);
+      ui.clearRegexError();
+
+      // Re-run search if active
+      if (ui.isSearchActive && currentSearchQuery) {
+        handleSearch(currentSearchQuery);
+      }
+    });
+  }
+
+  // Whole word toggle button
+  if (ui.wholeWordToggle) {
+    ui.wholeWordToggle.addEventListener('click', async () => {
+      const settings = settingsManager.getSettings();
+      settings.wholeWord = !settings.wholeWord;
+      await settingsManager.updateSettings(settings);
+      searcher.setSettings(settings);
+      ui.updateToggleButtons(settings);
+
+      // Re-run search if active
+      if (ui.isSearchActive && currentSearchQuery) {
+        handleSearch(currentSearchQuery);
+      }
+    });
+  }
+
+  // Keyboard shortcuts for toggles (Alt+R for regex, Alt+W for whole word)
+  if (ui.searchBox) {
+    ui.searchBox.addEventListener('keydown', (e) => {
+      if (e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        ui.regexToggle?.click();
+      } else if (e.altKey && e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        ui.wholeWordToggle?.click();
+      }
+    });
+  }
+
   // Hijack YouTube's sort dropdown - wait for UI to be ready
   setTimeout(() => {
     ui.injectSortReplacement((sortOrder) => {
@@ -313,6 +359,17 @@ async function handleSearch(query) {
     // Get settings from manager (already synced via checkbox change listeners)
     const settings = settingsManager.getSettings();
     searcher.setSettings(settings);
+
+    // Clear any previous regex error
+    ui.clearRegexError();
+
+    // Check for regex errors before proceeding
+    if (settings.useRegex) {
+      searcher.buildPattern(query);
+      if (searcher.hasRegexError()) {
+        ui.showRegexError(searcher.getRegexError());
+      }
+    }
 
     const shouldFetchReplies = settings.searchInReplies;
 
