@@ -13,6 +13,7 @@ let searcher = null;
 let sorter = null;
 let currentSearchQuery = '';
 let allMatches = [];  // Store ALL matched comments for sorting
+let allFetchedComments = [];  // Store ALL fetched comments for download
 let currentSortOrder = 'relevance';  // Default sort order
 let isInitializing = false;  // Guard against duplicate init calls
 
@@ -50,8 +51,19 @@ function cleanup() {
   fetcher = null;
   searcher = null;
   currentSearchQuery = '';
+  allFetchedComments = [];
+  allMatches = [];
+}
 
 
+/**
+ * Get the current video title for filename
+ */
+function getVideoTitle() {
+  const titleElement = document.querySelector('h1.ytd-video-primary-info-renderer yt-formatted-string, h1.ytd-watch-metadata yt-formatted-string');
+  let title = titleElement?.textContent?.trim() || 'youtube_video';
+  // Clean title for filename
+  return title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
 }
 
 
@@ -156,39 +168,75 @@ function attachEventListeners() {
         ui.hideSettings();
       });
     }
-
-    // Settings checkboxes
-    const caseSensitive = document.getElementById('quack-case-sensitive');
-    const searchReplies = document.getElementById('quack-search-replies');
-    const searchAuthors = document.getElementById('quack-search-authors');
-    const highlightMatches = document.getElementById('quack-highlight-matches');
-
-    const updateSettings = async () => {
-      try {
-        const newSettings = {
-          caseSensitive: caseSensitive.checked,
-          searchInReplies: searchReplies.checked,
-          searchInAuthorNames: searchAuthors.checked,
-          highlightMatches: highlightMatches.checked
-        };
-
-        await settingsManager.updateSettings(newSettings);
-        searcher.setSettings(newSettings);
-
-        // Re-run search if active
-        if (ui.isSearchActive && currentSearchQuery) {
-          handleSearch(currentSearchQuery);
-        }
-      } catch (error) {
-        // Settings save failed silently
-      }
-    };
-
-    if (caseSensitive) caseSensitive.addEventListener('change', updateSettings);
-    if (searchReplies) searchReplies.addEventListener('change', updateSettings);
-    if (searchAuthors) searchAuthors.addEventListener('change', updateSettings);
-    if (highlightMatches) highlightMatches.addEventListener('change', updateSettings);
   }
+
+  // Download button dropdown toggle
+  if (ui.downloadButton) {
+    ui.downloadButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      ui.toggleDownloadMenu();
+    });
+  }
+
+  // Fetch All Comments button
+  if (ui.fetchAllBtn) {
+    ui.fetchAllBtn.addEventListener('click', async () => {
+      ui.hideDownloadMenu();
+      await handleFetchAllComments();
+    });
+  }
+
+  // Download Search Results button
+  if (ui.downloadResultsBtn) {
+    ui.downloadResultsBtn.addEventListener('click', () => {
+      ui.hideDownloadMenu();
+      if (allMatches.length > 0) {
+        const videoTitle = getVideoTitle();
+        const searchTerm = currentSearchQuery.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+        const filename = `${videoTitle}_search_${searchTerm}.json`;
+        ui.downloadAsJson(allMatches, filename);
+      }
+    });
+  }
+
+  // Close download menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (ui.downloadMenu && !ui.downloadMenu.contains(e.target) && e.target !== ui.downloadButton) {
+      ui.hideDownloadMenu();
+    }
+  });
+
+  // Settings checkboxes
+  const caseSensitive = document.getElementById('quack-case-sensitive');
+  const searchReplies = document.getElementById('quack-search-replies');
+  const searchAuthors = document.getElementById('quack-search-authors');
+  const highlightMatches = document.getElementById('quack-highlight-matches');
+
+  const updateSettings = async () => {
+    try {
+      const newSettings = {
+        caseSensitive: caseSensitive.checked,
+        searchInReplies: searchReplies.checked,
+        searchInAuthorNames: searchAuthors.checked,
+        highlightMatches: highlightMatches.checked
+      };
+
+      await settingsManager.updateSettings(newSettings);
+      searcher.setSettings(newSettings);
+
+      // Re-run search if active
+      if (ui.isSearchActive && currentSearchQuery) {
+        handleSearch(currentSearchQuery);
+      }
+    } catch (error) {
+      // Settings save failed silently
+    }
+  };
+
+  if (caseSensitive) caseSensitive.addEventListener('change', updateSettings);
+  if (searchReplies) searchReplies.addEventListener('change', updateSettings);
+  if (searchAuthors) searchAuthors.addEventListener('change', updateSettings);
+  if (highlightMatches) highlightMatches.addEventListener('change', updateSettings);
 
   // Regex toggle button
   if (ui.regexToggle) {
@@ -200,7 +248,6 @@ function attachEventListeners() {
       ui.updateToggleButtons(settings);
       ui.clearRegexError();
 
-      // Re-run search if active
       if (ui.isSearchActive && currentSearchQuery) {
         handleSearch(currentSearchQuery);
       }
@@ -216,7 +263,6 @@ function attachEventListeners() {
       searcher.setSettings(settings);
       ui.updateToggleButtons(settings);
 
-      // Re-run search if active
       if (ui.isSearchActive && currentSearchQuery) {
         handleSearch(currentSearchQuery);
       }
@@ -239,7 +285,6 @@ function attachEventListeners() {
   // Hijack YouTube's sort dropdown - wait for UI to be ready
   setTimeout(() => {
     ui.injectSortReplacement((sortOrder) => {
-
       currentSortOrder = sortOrder;
       resortResults(sortOrder);
     });
@@ -257,6 +302,51 @@ function attachEventListeners() {
 
   // Handle YouTube navigation (SPA) with multiple detection methods
   setupNavigationDetection();
+}
+
+
+/**
+ * Fetch all comments without searching - for download
+ */
+async function handleFetchAllComments() {
+  // Show loading in dropdown instead of YouTube UI
+  ui.showDownloadLoading();
+
+  // Abort any ongoing fetch
+  if (fetcher) {
+    fetcher.abort();
+  }
+
+  try {
+    allFetchedComments = [];
+    let commentCount = 0;
+
+    await fetcher.fetchAllComments(
+      (checked, total) => {
+        // Update progress in dropdown
+        ui.updateDownloadProgress(commentCount);
+      },
+      (comments) => {
+        allFetchedComments.push(...comments);
+        commentCount = allFetchedComments.length;
+        ui.updateDownloadProgress(commentCount);
+      },
+      true // Always fetch replies for download
+    );
+
+    // Download immediately after fetching
+    const videoTitle = getVideoTitle();
+    const filename = `${videoTitle}_all_comments.json`;
+    ui.downloadAsJson(allFetchedComments, filename);
+
+    // Reset dropdown to normal state
+    ui.hideDownloadLoading();
+    ui.hideDownloadMenu();
+
+  } catch (error) {
+    ui.hideDownloadLoading();
+    ui.hideDownloadMenu();
+  }
 }
 
 
@@ -352,6 +442,7 @@ async function handleSearch(query) {
     // Reset searcher and allMatches
     searcher.reset();
     allMatches = [];  // Clear previous matches
+    allFetchedComments = [];  // Clear previous fetched comments
 
     let matchCount = 0;
     let totalCommentsSearched = 0;
@@ -387,6 +478,9 @@ async function handleSearch(query) {
       // Batch callback - process and display matches as they arrive
       (comments) => {
         totalCommentsSearched += comments.length;
+
+        // Store all fetched comments for download feature
+        allFetchedComments.push(...comments);
 
         // Cache any top-level comments that might have replies
         for (const comment of comments) {
@@ -477,6 +571,9 @@ async function handleSearch(query) {
 
     // Show final results
     ui.showFinalResults(matchCount);
+
+    // Update download buttons with counts
+    ui.updateDownloadButtons(allMatches.length);
 
   } catch (error) {
     // Try fallback to DOM extraction
