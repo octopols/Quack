@@ -532,6 +532,13 @@ class CommentSearchUI {
     const contentsContainer = this.commentsSection.querySelector('#contents');
     if (contentsContainer) {
       contentsContainer.innerHTML = '';
+
+      // Create results count element at top (will be updated dynamically)
+      const resultsCount = document.createElement('div');
+      resultsCount.className = 'quack-results-count';
+      resultsCount.id = 'quack-live-count';
+      resultsCount.textContent = 'Found 0 matching comments';
+      contentsContainer.appendChild(resultsCount);
     }
 
     // Create loading indicator
@@ -577,6 +584,17 @@ class CommentSearchUI {
     const progressElement = document.getElementById('quack-loading-progress');
     if (progressElement) {
       progressElement.textContent = `Checked ${checked.toLocaleString()} of ${total.toLocaleString()} total comments`;
+    }
+  }
+
+  /**
+   * Update match count dynamically during search
+   * @param {number} count - Number of matching comments found so far
+   */
+  updateMatchCount(count) {
+    const liveCount = document.getElementById('quack-live-count');
+    if (liveCount) {
+      liveCount.textContent = `Found ${count.toLocaleString()} matching comment${count === 1 ? '' : 's'}`;
     }
   }
 
@@ -1330,6 +1348,14 @@ class CommentSearchUI {
    * @param {number} count - Number of results
    */
   showResultsCount(count) {
+    // Try to reuse the existing live count element
+    const liveCount = document.getElementById('quack-live-count');
+    if (liveCount) {
+      liveCount.textContent = `Found ${count.toLocaleString()} matching comment${count === 1 ? '' : 's'}`;
+      return;
+    }
+
+    // Fallback: create new element if live count doesn't exist
     const contentsContainer = this.commentsSection.querySelector('#contents');
     if (!contentsContainer) return;
 

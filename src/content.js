@@ -545,6 +545,9 @@ async function handleSearch(query) {
           ui.addCommentResult(comment, query, searcher);
         }
       }
+
+      // Update count dynamically as we find matches
+      ui.updateMatchCount(allMatchedItems.length);
     };
 
     // Check if we already have fetched comments to search on
