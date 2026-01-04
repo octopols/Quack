@@ -317,6 +317,7 @@ class CommentSearchUI {
 
 
   showSettings() {
+    this.hideDownloadMenu();
     if (this.settingsPopup) {
       this.settingsPopup.style.display = 'block';
       this.positionSettingsPopup();
@@ -415,6 +416,7 @@ class CommentSearchUI {
    * Toggle download dropdown menu visibility
    */
   toggleDownloadMenu() {
+    this.hideSettings();
     if (this.downloadMenu) {
       this.downloadMenu.classList.toggle('visible');
     }
