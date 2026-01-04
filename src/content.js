@@ -12,7 +12,8 @@ let fetcher = null;
 let searcher = null;
 let sorter = null;
 let currentSearchQuery = '';
-let allMatches = [];  // Store ALL matched comments for sorting
+let allMatches = [];  // Store matched comments for UI display (includes parents for context)
+let allMatchedItems = [];  // Store ONLY matched comments/replies for count and download
 let allFetchedComments = [];  // Store ALL fetched comments for download
 let currentSortOrder = 'relevance';  // Default sort order
 let isInitializing = false;  // Guard against duplicate init calls
@@ -53,6 +54,7 @@ function cleanup() {
   currentSearchQuery = '';
   allFetchedComments = [];
   allMatches = [];
+  allMatchedItems = [];
 }
 
 
@@ -191,11 +193,11 @@ function attachEventListeners() {
   if (ui.downloadResultsBtn) {
     ui.downloadResultsBtn.addEventListener('click', () => {
       ui.hideDownloadMenu();
-      if (allMatches.length > 0) {
+      if (allMatchedItems.length > 0) {
         const videoTitle = getVideoTitle();
         const searchTerm = currentSearchQuery.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
         const filename = `${videoTitle}_search_${searchTerm}.json`;
-        ui.downloadAsJson(allMatches, filename);
+        ui.downloadAsJson(allMatchedItems, filename);
       }
     });
   }
@@ -310,6 +312,15 @@ function attachEventListeners() {
  * Fetch all comments without searching - for download
  */
 async function handleFetchAllComments() {
+  // If we already have fetched comments from a search, use those directly
+  if (allFetchedComments.length > 0) {
+    const videoTitle = getVideoTitle();
+    const filename = `${videoTitle}_all_comments.json`;
+    ui.downloadAsJson(allFetchedComments, filename);
+    ui.hideDownloadMenu();
+    return;
+  }
+
   // Show loading in dropdown instead of YouTube UI
   ui.showDownloadLoading();
 
@@ -428,11 +439,6 @@ async function handleSearch(query) {
   }
   currentSearchQuery = query;
 
-  // Abort any ongoing fetch
-  if (fetcher) {
-    fetcher.abort();
-  }
-
   // Show loading state (this will also disable search inputs)
   ui.showLoadingState();
 
@@ -442,11 +448,8 @@ async function handleSearch(query) {
   try {
     // Reset searcher and allMatches
     searcher.reset();
-    allMatches = [];  // Clear previous matches
-    allFetchedComments = [];  // Clear previous fetched comments
-
-    let matchCount = 0;
-    let totalCommentsSearched = 0;
+    allMatches = [];  // Clear previous matches (for UI display)
+    allMatchedItems = [];  // Clear previous matched items (for count/download)
 
     // Get settings from manager (already synced via checkbox change listeners)
     const settings = settingsManager.getSettings();
@@ -463,118 +466,128 @@ async function handleSearch(query) {
       }
     }
 
-    const shouldFetchReplies = settings.searchInReplies;
-
     // Cache to store parent comments for later reply nesting
     const parentCommentCache = new Map();
 
-
-
-    // Fetch all comments with progressive display
-    await fetcher.fetchAllComments(
-      // Progress callback
-      (checked, total) => {
-        ui.updateLoadingProgress(checked, total);
-      },
-      // Batch callback - process and display matches as they arrive
-      (comments) => {
-        totalCommentsSearched += comments.length;
-
-        // Store all fetched comments for download feature
-        allFetchedComments.push(...comments);
-
-        // Cache any top-level comments that might have replies
-        for (const comment of comments) {
-          if (!comment.isReply) {
-            parentCommentCache.set(comment.id, comment);
-          }
+    // Helper function to process comments and find matches
+    const processComments = (comments) => {
+      // Cache any top-level comments that might have replies
+      for (const comment of comments) {
+        if (!comment.isReply) {
+          parentCommentCache.set(comment.id, comment);
         }
+      }
 
-        const matches = searcher.filterComments(comments, query);
+      const matches = searcher.filterComments(comments, query);
 
-        // Calculate relevance scores for all matches
-        for (const match of matches) {
-          match.relevanceScore = sorter.calculateRelevance(match, query);
+      // Calculate relevance scores for all matches
+      for (const match of matches) {
+        match.relevanceScore = sorter.calculateRelevance(match, query);
+      }
+
+      // Separate top-level comments and replies
+      const topLevelMatches = matches.filter(m => !m.isReply);
+      const replyMatches = matches.filter(m => m.isReply);
+
+      // Add all matched items to allMatchedItems for count/download
+      allMatchedItems.push(...topLevelMatches);
+      allMatchedItems.push(...replyMatches);
+
+      // Group replies with their parent comments for UI display
+      const parentMap = new Map();
+
+      // First, add all top-level comment matches to the map
+      for (const match of topLevelMatches) {
+        if (!parentMap.has(match.id)) {
+          parentMap.set(match.id, { comment: match, replies: [], matched: true });
         }
+      }
 
-        // Separate top-level comments and replies
-        const topLevelMatches = matches.filter(m => !m.isReply);
-        const replyMatches = matches.filter(m => m.isReply);
+      // Then, handle reply matches - look up parents from cache
+      for (const reply of replyMatches) {
+        if (reply.parentCommentId) {
+          let parent = parentMap.get(reply.parentCommentId);
 
-        // Group replies with their parent comments
-        const parentMap = new Map();
-
-        // First, add all top-level comment matches to the map
-        for (const match of topLevelMatches) {
-          if (!parentMap.has(match.id)) {
-            parentMap.set(match.id, { comment: match, replies: [], matched: true });
-          }
-        }
-
-        // Then, handle reply matches - look up parents from cache
-        for (const reply of replyMatches) {
-          if (reply.parentCommentId) {
-            let parent = parentMap.get(reply.parentCommentId);
-
-            // If parent not in map, find it from cache
-            if (!parent) {
-              const parentComment = parentCommentCache.get(reply.parentCommentId);
-              if (parentComment) {
-                parent = { comment: parentComment, replies: [], matched: false };
-                parentMap.set(reply.parentCommentId, parent);
-              }
+          // If parent not in map, find it from cache (for context)
+          if (!parent) {
+            const parentComment = parentCommentCache.get(reply.parentCommentId);
+            if (parentComment) {
+              parent = { comment: parentComment, replies: [], matched: false };
+              parentMap.set(reply.parentCommentId, parent);
             }
+          }
 
-            if (parent) {
-              parent.replies.push(reply);
-            } else {
-              // Parent not found - add reply standalone
-              allMatches.push(reply);  // Store in allMatches
-              if (currentSortOrder === 'relevance') {
-                ui.addCommentResult(reply, query, searcher, true);
-              }
-              matchCount++;
+          if (parent) {
+            parent.replies.push(reply);
+          } else {
+            // Parent not found - add reply standalone to UI
+            allMatches.push(reply);
+            if (currentSortOrder === 'relevance') {
+              ui.addCommentResult(reply, query, searcher, true);
             }
           }
         }
+      }
 
-        // Display comments with their nested replies
-        for (const { comment, replies, matched } of parentMap.values()) {
-          // Attach replies to comment object for nested rendering
-          if (replies.length > 0) {
-            comment.replies = replies;
-          }
-
-          // Store in allMatches (store the parent with its replies attached)
-          if (matched) {
-            allMatches.push(comment);
-          }
-
-          if (currentSortOrder === 'relevance') {
-            ui.addCommentResult(comment, query, searcher);
-          }
-
-          // Only count matches, not context parents
-          if (matched) {
-            matchCount++;
-          }
-          matchCount += replies.length; // Count all matched replies
+      // Display comments with their nested replies in UI
+      for (const { comment, replies, matched } of parentMap.values()) {
+        // Attach replies to comment object for nested rendering
+        if (replies.length > 0) {
+          comment.replies = replies;
         }
-      },
-      // Pass reply fetching setting
-      shouldFetchReplies
-    );
 
-    // If using custom sort, re-sort and render on every batch for dynamic updates
+        // Add to allMatches for UI display (parent matched OR has matching replies for context)
+        if (matched || replies.length > 0) {
+          allMatches.push(comment);
+        }
+
+        if (currentSortOrder === 'relevance') {
+          ui.addCommentResult(comment, query, searcher);
+        }
+      }
+    };
+
+    // Check if we already have fetched comments to search on
+    if (allFetchedComments.length > 0) {
+      // Use cached comments - instant search!
+      processComments(allFetchedComments);
+    } else {
+      // Fetch fresh comments
+      const shouldFetchReplies = settings.searchInReplies;
+
+      // Abort any ongoing fetch
+      if (fetcher) {
+        fetcher.abort();
+      }
+
+      allFetchedComments = [];
+
+      await fetcher.fetchAllComments(
+        // Progress callback
+        (checked, total) => {
+          ui.updateLoadingProgress(checked, total);
+        },
+        // Batch callback - process and display matches as they arrive
+        (comments) => {
+          // Store all fetched comments for reuse
+          allFetchedComments.push(...comments);
+
+          processComments(comments);
+        },
+        shouldFetchReplies
+      );
+    }
+
+    // If using custom sort, re-sort and render
     if (currentSortOrder !== 'relevance') {
       resortResults(currentSortOrder);
     }
 
-    // Show final results
-    ui.showFinalResults(matchCount);
+    // Show final results (count of actual matched comments)
+    ui.showFinalResults(allMatchedItems.length);
 
     // Update download buttons with counts
-    ui.updateDownloadButtons(allMatches.length);
+    ui.updateDownloadButtons(allMatchedItems.length);
 
   } catch (error) {
     // Try fallback to DOM extraction

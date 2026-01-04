@@ -161,6 +161,7 @@ class CommentFetcher {
       });
 
       if (!response.ok) {
+        console.error('[Quack] Comment API error:', response.status, response.statusText);
         return null;
       }
 
@@ -170,6 +171,7 @@ class CommentFetcher {
       if (error.name === 'AbortError') {
         return null;
       }
+      console.error('[Quack] Comment fetch failed:', error.message);
       return null;
     }
   }
