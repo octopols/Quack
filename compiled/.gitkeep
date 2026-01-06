@@ -1,0 +1,2 @@
+# This file ensures the compiled/ directory exists in the repository.
+# Actual build artifacts (*.zip) are git-ignored.

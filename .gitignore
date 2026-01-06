@@ -1,4 +1,4 @@
-# .gitignore for YouTube Comment Search Extension
+# .gitignore for Quack - YouTube Comment Search Extension
 
 # OS Files
 .DS_Store
@@ -20,9 +20,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build output (if adding build process)
+# Build output
 dist/
 build/
+
+# Compiled extension packages
+compiled/*
+!compiled/.gitkeep
 *.zip
 
 # Temporary files
