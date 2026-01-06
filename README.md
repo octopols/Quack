@@ -53,11 +53,6 @@ Sort controls are available **during search** - watch results re-order in real-t
 
 ### Screenshots
 
-#### Search Interface
-![Search Box Integration](screenshots/search-interface.png)
-
-*The search box integrated seamlessly into YouTube's comments section*
-
 #### Search Results
 ![Search Results](screenshots/search-results.png)
 
@@ -67,6 +62,11 @@ Sort controls are available **during search** - watch results re-order in real-t
 ![Settings Configuration](screenshots/settings-panel.png)
 
 *Configurable search options including case sensitivity, reply inclusion, and match highlighting*
+
+#### Download Comments
+![Download Comments](screenshots/download.png)
+
+*Export filtered or all comments to file*
 
 ## Installation
 
