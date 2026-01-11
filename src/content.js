@@ -79,11 +79,11 @@ async function init() {
   // Always cleanup first to avoid duplicates
   cleanup();
   try {
-    // Wait for YouTube page to be ready
-    await waitForElement('ytd-comments-header-renderer', 10000);
+    // Wait for YouTube page to be ready (shorter timeout since observer will catch late loads)
+    await waitForElement('ytd-comments-header-renderer', 5000);
 
-    // Wait a bit more for comments to start loading
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Brief delay to ensure web components have fully rendered their internal structure
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Initialize settings
     await settingsManager.init();
@@ -109,8 +109,11 @@ async function init() {
 
     // Attach event listeners
     attachEventListeners();
+
+    // Disconnect the comments observer since we've successfully initialized
+    disconnectCommentsObserver();
   } catch (error) {
-    // Initialization failed silently
+    // Initialization failed - the persistent observer will retry when comments load
   } finally {
     isInitializing = false;
   }
@@ -220,26 +223,29 @@ function attachEventListeners() {
     });
   }
 
-  // Download button dropdown toggle
-  if (ui.downloadButton) {
-    ui.downloadButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      ui.toggleDownloadMenu();
-    });
-  }
-
-  // Fetch All Comments button
+  // Fetch All Comments button (JSON)
   if (ui.fetchAllBtn) {
     ui.fetchAllBtn.addEventListener('click', async () => {
-      ui.hideDownloadMenu();
       await handleFetchAllComments();
     });
   }
 
-  // Download Search Results button
+  // Fetch All Comments button (CSV)
+  if (ui.fetchAllCsvBtn) {
+    ui.fetchAllCsvBtn.addEventListener('click', async () => {
+      if (allFetchedComments.length > 0) {
+        const videoTitle = getVideoTitle();
+        const filename = `${videoTitle}_all_comments.csv`;
+        ui.downloadAsCsv(allFetchedComments, filename);
+      } else {
+        await handleFetchAllCommentsCsv();
+      }
+    });
+  }
+
+  // Download Search Results button (JSON)
   if (ui.downloadResultsBtn) {
     ui.downloadResultsBtn.addEventListener('click', () => {
-      ui.hideDownloadMenu();
       if (allMatchedItems.length > 0) {
         const videoTitle = getVideoTitle();
         const searchTerm = currentSearchQuery.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
@@ -249,25 +255,9 @@ function attachEventListeners() {
     });
   }
 
-  // CSV Download handlers
-  const fetchAllCsvBtn = document.getElementById('quack-fetch-all-csv');
-  if (fetchAllCsvBtn) {
-    fetchAllCsvBtn.addEventListener('click', async () => {
-      if (allFetchedComments.length > 0) {
-        const videoTitle = getVideoTitle();
-        const filename = `${videoTitle}_all_comments.csv`;
-        ui.downloadAsCsv(allFetchedComments, filename);
-        ui.hideDownloadMenu();
-      } else {
-        await handleFetchAllCommentsCsv();
-      }
-    });
-  }
-
-  const downloadResultsCsvBtn = document.getElementById('quack-download-results-csv');
-  if (downloadResultsCsvBtn) {
-    downloadResultsCsvBtn.addEventListener('click', () => {
-      ui.hideDownloadMenu();
+  // Download Search Results button (CSV)
+  if (ui.downloadResultsCsvBtn) {
+    ui.downloadResultsCsvBtn.addEventListener('click', () => {
       if (allMatchedItems.length > 0) {
         const videoTitle = getVideoTitle();
         const searchTerm = currentSearchQuery.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
@@ -276,13 +266,6 @@ function attachEventListeners() {
       }
     });
   }
-
-  // Close download menu when clicking outside
-  document.addEventListener('click', (e) => {
-    if (ui.downloadMenu && !ui.downloadMenu.contains(e.target) && !ui.downloadButton.contains(e.target)) {
-      ui.hideDownloadMenu();
-    }
-  });
 
   // Global Esc key handler
   document.addEventListener('keydown', (e) => {
@@ -298,26 +281,17 @@ function attachEventListeners() {
         return;
       }
 
-      // If menus are open or search is active
+      // If settings popup is open or search is active
       if (ui.isSearchActive ||
-        (ui.settingsPopup && ui.settingsPopup.style.display === 'block') ||
-        (ui.downloadMenu && ui.downloadMenu.classList.contains('visible'))) {
+        (ui.settingsPopup && ui.settingsPopup.style.display === 'block')) {
 
         e.preventDefault();
 
-        // 1. Close menus if open
-        let menuClosed = false;
+        // 1. Close settings popup if open
         if (ui.settingsPopup && ui.settingsPopup.style.display === 'block') {
           ui.hideSettings();
-          menuClosed = true;
+          return;
         }
-
-        if (ui.downloadMenu && ui.downloadMenu.classList.contains('visible')) {
-          ui.hideDownloadMenu();
-          menuClosed = true;
-        }
-
-        if (menuClosed) return;
 
         // 2. Hide search history
         ui.hideSearchHistory();
@@ -343,10 +317,10 @@ function attachEventListeners() {
   const updateSettings = async () => {
     try {
       const newSettings = {
-        caseSensitive: caseSensitive.checked,
-        searchInReplies: searchReplies.checked,
-        searchInAuthorNames: searchAuthors.checked,
-        highlightMatches: highlightMatches.checked
+        caseSensitive: caseSensitive?.checked || false,
+        searchInReplies: searchReplies?.checked || false,
+        searchInAuthorNames: searchAuthors?.checked || false,
+        highlightMatches: highlightMatches?.checked || false
       };
 
       await settingsManager.updateSettings(newSettings);
@@ -366,14 +340,13 @@ function attachEventListeners() {
   if (searchAuthors) searchAuthors.addEventListener('change', updateSettings);
   if (highlightMatches) highlightMatches.addEventListener('change', updateSettings);
 
-  // Regex toggle button
+  // Regex toggle checkbox
   if (ui.regexToggle) {
-    ui.regexToggle.addEventListener('click', async () => {
+    ui.regexToggle.addEventListener('change', async () => {
       const settings = settingsManager.getSettings();
-      settings.useRegex = !settings.useRegex;
+      settings.useRegex = ui.regexToggle.checked;
       await settingsManager.updateSettings(settings);
       searcher.setSettings(settings);
-      ui.updateToggleButtons(settings);
       ui.clearRegexError();
 
       if (ui.isSearchActive && currentSearchQuery) {
@@ -382,14 +355,13 @@ function attachEventListeners() {
     });
   }
 
-  // Whole word toggle button
+  // Whole word toggle checkbox
   if (ui.wholeWordToggle) {
-    ui.wholeWordToggle.addEventListener('click', async () => {
+    ui.wholeWordToggle.addEventListener('change', async () => {
       const settings = settingsManager.getSettings();
-      settings.wholeWord = !settings.wholeWord;
+      settings.wholeWord = ui.wholeWordToggle.checked;
       await settingsManager.updateSettings(settings);
       searcher.setSettings(settings);
-      ui.updateToggleButtons(settings);
 
       if (ui.isSearchActive && currentSearchQuery) {
         handleSearch(currentSearchQuery);
@@ -402,10 +374,16 @@ function attachEventListeners() {
     ui.searchBox.addEventListener('keydown', (e) => {
       if (e.altKey && e.key.toLowerCase() === 'r') {
         e.preventDefault();
-        ui.regexToggle?.click();
+        if (ui.regexToggle) {
+          ui.regexToggle.checked = !ui.regexToggle.checked;
+          ui.regexToggle.dispatchEvent(new Event('change'));
+        }
       } else if (e.altKey && e.key.toLowerCase() === 'w') {
         e.preventDefault();
-        ui.wholeWordToggle?.click();
+        if (ui.wholeWordToggle) {
+          ui.wholeWordToggle.checked = !ui.wholeWordToggle.checked;
+          ui.wholeWordToggle.dispatchEvent(new Event('change'));
+        }
       }
     });
   }
@@ -461,7 +439,6 @@ async function handleFetchAllComments() {
     const videoTitle = getVideoTitle();
     const filename = `${videoTitle}_all_comments.json`;
     ui.downloadAsJson(allFetchedComments, filename);
-    ui.hideDownloadMenu();
     return;
   }
 
@@ -495,13 +472,11 @@ async function handleFetchAllComments() {
     const filename = `${videoTitle}_all_comments.json`;
     ui.downloadAsJson(allFetchedComments, filename);
 
-    // Reset dropdown to normal state
+    // Reset to normal state
     ui.hideDownloadLoading();
-    ui.hideDownloadMenu();
 
   } catch (error) {
     ui.hideDownloadLoading();
-    ui.hideDownloadMenu();
   }
 }
 
@@ -537,11 +512,9 @@ async function handleFetchAllCommentsCsv() {
     ui.downloadAsCsv(allFetchedComments, filename);
 
     ui.hideDownloadLoading();
-    ui.hideDownloadMenu();
 
   } catch (error) {
     ui.hideDownloadLoading();
-    ui.hideDownloadMenu();
   }
 }
 
@@ -858,17 +831,58 @@ function waitForElement(selector, timeout = 5000) {
 
 
 
+// Persistent observer to watch for comments loading
+let commentsObserver = null;
+
+/**
+ * Setup a persistent observer to detect when comments section loads.
+ * This handles the case where users scroll to comments after a long delay.
+ */
+function setupCommentsObserver() {
+  // Don't create multiple observers
+  if (commentsObserver) {
+    return;
+  }
+
+  commentsObserver = new MutationObserver(() => {
+    // Check if comments section now exists and we haven't initialized yet
+    const commentsHeader = document.querySelector('ytd-comments-header-renderer');
+    if (commentsHeader && !ui && isYouTubeWatchPage()) {
+      init();
+    }
+  });
+
+  commentsObserver.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
+
+/**
+ * Disconnect the comments observer
+ */
+function disconnectCommentsObserver() {
+  if (commentsObserver) {
+    commentsObserver.disconnect();
+    commentsObserver = null;
+  }
+}
+
 // Initialize when page is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     if (isYouTubeWatchPage()) {
       init();
+      // Also setup observer in case comments load later
+      setupCommentsObserver();
     }
     setupNavigationDetection();
   });
 } else {
   if (isYouTubeWatchPage()) {
     init();
+    // Also setup observer in case comments load later
+    setupCommentsObserver();
   }
   setupNavigationDetection();
 }
@@ -879,6 +893,7 @@ function setupNavigationDetection() {
   // Cleanup when navigation starts
   window.addEventListener('yt-navigate-start', () => {
     cleanup();
+    disconnectCommentsObserver();
   });
 
   // Re-initialize when navigation finishes
@@ -887,6 +902,8 @@ function setupNavigationDetection() {
       // Small delay to ensure DOM is fully settled
       setTimeout(() => {
         init();
+        // Setup observer in case comments load later
+        setupCommentsObserver();
       }, 1000);
     }
   });
