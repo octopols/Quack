@@ -152,30 +152,73 @@ class CommentSearchUI {
       </div>
       <div class="quack-settings-body">
         <div class="quack-settings-grid">
-          <label class="quack-setting-compact" title="Use regular expression">
+          <label class="quack-setting-compact" title="Use regular expressions for advanced pattern matching. Example: 'hello.*world' matches 'hello there world'">
+            <span>Use regex patterns</span>
             <input type="checkbox" id="quack-use-regex" ${useRegexChecked} />
-            <span>Regex</span>
+            <span class="quack-toggle-switch"></span>
           </label>
-          <label class="quack-setting-compact" title="Match whole word only">
+          <label class="quack-setting-compact" title="Match complete words only, not partial matches. 'cat' won't match 'category'">
+            <span>Match whole words</span>
             <input type="checkbox" id="quack-whole-word" ${wholeWordChecked} />
-            <span>Whole word</span>
+            <span class="quack-toggle-switch"></span>
           </label>
-          <label class="quack-setting-compact" title="Case sensitive search">
-            <input type="checkbox" id="quack-case-sensitive" ${caseSensitiveChecked} />
+          <label class="quack-setting-compact" title="Distinguish between uppercase and lowercase. 'Hello' won't match 'hello'">
             <span>Case sensitive</span>
+            <input type="checkbox" id="quack-case-sensitive" ${caseSensitiveChecked} />
+            <span class="quack-toggle-switch"></span>
           </label>
-          <label class="quack-setting-compact" title="Include replies in search">
+          <label class="quack-setting-compact" title="Include reply comments in search results, not just top-level comments">
+            <span>Include replies</span>
             <input type="checkbox" id="quack-search-replies" ${searchRepliesChecked} />
-            <span>Search replies</span>
+            <span class="quack-toggle-switch"></span>
           </label>
-          <label class="quack-setting-compact" title="Search in author names">
+          <label class="quack-setting-compact" title="Search in commenter usernames as well as comment text">
+            <span>Search usernames</span>
             <input type="checkbox" id="quack-search-authors" ${searchAuthorsChecked} />
-            <span>Search authors</span>
+            <span class="quack-toggle-switch"></span>
           </label>
-          <label class="quack-setting-compact" title="Highlight matching text">
+          <label class="quack-setting-compact" title="Highlight the matching text in search results with a colored background">
+            <span>Highlight matches</span>
             <input type="checkbox" id="quack-highlight-matches" ${highlightMatchesChecked} />
-            <span>Highlight</span>
+            <span class="quack-toggle-switch"></span>
           </label>
+        </div>
+        <div class="quack-settings-divider"></div>
+        <div class="quack-collapsible-header" id="quack-filters-header">
+          <span>Filters</span>
+          <svg class="quack-chevron" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        </div>
+        <div class="quack-collapsible-content" id="quack-filters-content">
+          <div class="quack-settings-grid">
+            <label class="quack-setting-compact" title="Show only comments from the video creator/channel owner">
+              <span>Creator comments</span>
+              <input type="checkbox" id="quack-filter-creator" />
+              <span class="quack-toggle-switch"></span>
+            </label>
+            <label class="quack-setting-compact" title="Show only comments that have been hearted by the creator">
+              <span>Hearted by creator</span>
+              <input type="checkbox" id="quack-filter-hearted" />
+              <span class="quack-toggle-switch"></span>
+            </label>
+            <label class="quack-setting-compact" title="Show only comments that contain URLs or links">
+              <span>Contains links</span>
+              <input type="checkbox" id="quack-filter-links" />
+              <span class="quack-toggle-switch"></span>
+            </label>
+          </div>
+          <div class="quack-filter-row">
+            <label class="quack-filter-label" title="Only show comments with at least this many likes">Min likes:</label>
+            <input type="number" id="quack-filter-min-likes" class="quack-filter-input" min="0" value="0" placeholder="0" />
+          </div>
+          <div class="quack-filter-row">
+            <label class="quack-filter-label" title="Filter comments by when they were posted">Posted within:</label>
+            <select id="quack-filter-date-range" class="quack-filter-select">
+              <option value="all">All time</option>
+              <option value="24h">Last 24 hours</option>
+              <option value="week">Last week</option>
+              <option value="month">Last month</option>
+            </select>
+          </div>
         </div>
         <div class="quack-settings-divider"></div>
         <div class="quack-collapsible-header collapsed" id="quack-export-header">
@@ -203,6 +246,9 @@ class CommentSearchUI {
               <span class="quack-dl-count" id="quack-results-count-csv"></span>
             </button>
           </div>
+          <button id="quack-copy-results" class="quack-dl-btn quack-copy-btn" disabled title="Copy search results to clipboard">
+            <span>Copy Results</span>
+          </button>
         </div>
         <div class="quack-settings-divider"></div>
         <div class="quack-shortcuts-section">
@@ -224,8 +270,25 @@ class CommentSearchUI {
     this.fetchAllCsvBtn = popup.querySelector('#quack-fetch-all-csv');
     this.downloadResultsBtn = popup.querySelector('#quack-download-results');
     this.downloadResultsCsvBtn = popup.querySelector('#quack-download-results-csv');
+    this.copyResultsBtn = popup.querySelector('#quack-copy-results');
+
+    // Filter elements
+    this.filterCreator = popup.querySelector('#quack-filter-creator');
+    this.filterHearted = popup.querySelector('#quack-filter-hearted');
+    this.filterLinks = popup.querySelector('#quack-filter-links');
+    this.filterMinLikes = popup.querySelector('#quack-filter-min-likes');
+    this.filterDateRange = popup.querySelector('#quack-filter-date-range');
 
     // Setup collapsible sections
+    const filtersHeader = popup.querySelector('#quack-filters-header');
+    const filtersContent = popup.querySelector('#quack-filters-content');
+    if (filtersHeader && filtersContent) {
+      filtersHeader.addEventListener('click', () => {
+        filtersHeader.classList.toggle('collapsed');
+        filtersContent.classList.toggle('collapsed');
+      });
+    }
+
     const exportHeader = popup.querySelector('#quack-export-header');
     const exportContent = popup.querySelector('#quack-export-content');
     if (exportHeader && exportContent) {
@@ -246,8 +309,8 @@ class CommentSearchUI {
     const scrollX = window.scrollX || window.pageXOffset;
     const scrollY = window.scrollY || window.pageYOffset;
 
-    this.settingsPopup.style.top = (rect.bottom + scrollY + 5) + 'px';
-    this.settingsPopup.style.left = (rect.left + scrollX - 200) + 'px';
+    this.settingsPopup.style.top = (rect.bottom + scrollY - 35) + 'px';
+    this.settingsPopup.style.left = (rect.left + scrollX + 40) + 'px';
   }
 
   injectSortReplacement(onSortCallback) {
@@ -395,6 +458,14 @@ class CommentSearchUI {
     // Update regex and whole word checkboxes
     if (this.regexToggle) this.regexToggle.checked = settings.useRegex;
     if (this.wholeWordToggle) this.wholeWordToggle.checked = settings.wholeWord;
+
+    // Update filter checkboxes
+    const filters = settings.filters || {};
+    if (this.filterCreator) this.filterCreator.checked = filters.creatorOnly || false;
+    if (this.filterHearted) this.filterHearted.checked = filters.heartedOnly || false;
+    if (this.filterLinks) this.filterLinks.checked = filters.hasLinks || false;
+    if (this.filterMinLikes) this.filterMinLikes.value = filters.minLikes || 0;
+    if (this.filterDateRange) this.filterDateRange.value = filters.dateRange || 'all';
   }
 
   /**
@@ -483,6 +554,10 @@ class CommentSearchUI {
     const csvResultsBtn = document.getElementById('quack-download-results-csv');
     if (csvResultsBtn) {
       csvResultsBtn.disabled = filteredCount === 0;
+    }
+
+    if (this.copyResultsBtn) {
+      this.copyResultsBtn.disabled = filteredCount === 0;
     }
   }
 

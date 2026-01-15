@@ -111,18 +111,114 @@ class CommentSearcher {
   }
 
 
-  filterComments(comments, query) {
-    if (!query || query.trim() === '') {
-      return comments;
+  /**
+   * Check if comment passes advanced filters (creator, hearted, links, likes, date)
+   */
+  passesFilters(comment) {
+    const filters = this.settings.filters || {};
+
+    // Creator filter
+    if (filters.creatorOnly && !comment.isCreator) {
+      return false;
     }
 
-    this.currentQuery = query.trim();
+    // Hearted filter
+    if (filters.heartedOnly && !comment.isHearted) {
+      return false;
+    }
+
+    // Has links filter
+    if (filters.hasLinks && !comment.hasLinks) {
+      return false;
+    }
+
+    // Min likes filter
+    if (filters.minLikes > 0) {
+      const likes = comment.likesNumeric || 0;
+      if (likes < filters.minLikes) {
+        return false;
+      }
+    }
+
+    // Date range filter
+    if (filters.dateRange && filters.dateRange !== 'all') {
+      if (!this.matchesDateRange(comment.timestamp, filters.dateRange)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+
+  /**
+   * Check if timestamp matches date range filter
+   * Timestamps are relative like "2 hours ago", "3 days ago", "1 week ago"
+   */
+  matchesDateRange(timestamp, dateRange) {
+    if (!timestamp || !dateRange || dateRange === 'all') return true;
+
+    const lower = timestamp.toLowerCase();
+
+    // Parse relative time from timestamp
+    const hoursMatch = lower.match(/(\d+)\s*(hour|hr)/);
+    const daysMatch = lower.match(/(\d+)\s*day/);
+    const weeksMatch = lower.match(/(\d+)\s*week/);
+    const monthsMatch = lower.match(/(\d+)\s*month/);
+    const yearsMatch = lower.match(/(\d+)\s*year/);
+
+    let hoursAgo = 0;
+
+    if (yearsMatch) {
+      hoursAgo = parseInt(yearsMatch[1]) * 365 * 24;
+    } else if (monthsMatch) {
+      hoursAgo = parseInt(monthsMatch[1]) * 30 * 24;
+    } else if (weeksMatch) {
+      hoursAgo = parseInt(weeksMatch[1]) * 7 * 24;
+    } else if (daysMatch) {
+      hoursAgo = parseInt(daysMatch[1]) * 24;
+    } else if (hoursMatch) {
+      hoursAgo = parseInt(hoursMatch[1]);
+    } else if (lower.includes('minute') || lower.includes('second') || lower.includes('just now')) {
+      hoursAgo = 0;
+    } else {
+      // Unknown format, include it
+      return true;
+    }
+
+    switch (dateRange) {
+      case '24h':
+        return hoursAgo <= 24;
+      case 'week':
+        return hoursAgo <= 7 * 24;
+      case 'month':
+        return hoursAgo <= 30 * 24;
+      default:
+        return true;
+    }
+  }
+
+
+  filterComments(comments, query) {
+    this.currentQuery = query?.trim() || '';
     this.matchCount = 0;
 
     const matches = [];
 
     for (const comment of comments) {
-      if (this.commentMatches(comment, this.currentQuery)) {
+      // Apply advanced filters first
+      if (!this.passesFilters(comment)) {
+        continue;
+      }
+
+      // If there's a query, apply text matching
+      if (this.currentQuery) {
+        if (this.commentMatches(comment, this.currentQuery)) {
+          matches.push(comment);
+          this.matchCount++;
+        }
+      } else {
+        // No query - just apply filters
         matches.push(comment);
         this.matchCount++;
       }

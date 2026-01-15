@@ -387,11 +387,11 @@
 /* Settings Popup */
 .quack-settings-popup {
   position: absolute;
-  width: 240px;
+  width: 260px;
   background-color: var(--yt-spec-menu-background);
   border: 1px solid var(--yt-spec-10-percent-layer);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   z-index: 10000;
   overflow: hidden;
 }
@@ -400,69 +400,135 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--yt-spec-10-percent-layer);
   font-weight: 500;
   color: var(--yt-spec-text-primary);
-  font-size: 13px;
+  font-size: 14px;
+  background-color: var(--yt-spec-badge-chip-background);
 }
 
 .quack-settings-close {
   background: transparent;
   border: none;
-  font-size: 24px;
+  font-size: 20px;
   color: var(--yt-spec-text-secondary);
   cursor: pointer;
   padding: 0;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .quack-settings-close:hover {
-  background-color: var(--yt-spec-badge-chip-background);
+  background-color: var(--yt-spec-10-percent-layer);
+  color: var(--yt-spec-text-primary);
 }
 
 .quack-settings-body {
-  padding: 10px;
+  padding: 12px 14px;
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--yt-spec-text-secondary) transparent;
 }
 
-/* 2-column grid for settings checkboxes */
+.quack-settings-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.quack-settings-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.quack-settings-body::-webkit-scrollbar-thumb {
+  background-color: var(--yt-spec-text-secondary);
+  border-radius: 3px;
+  opacity: 0.5;
+}
+
+.quack-settings-body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--yt-spec-text-primary);
+}
+
+/* Section title for settings groups */
+.quack-settings-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--yt-spec-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 0 8px;
+  margin-bottom: 4px;
+}
+
+/* Single column layout for settings checkboxes */
 .quack-settings-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .quack-setting-compact {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
+  justify-content: space-between;
+  padding: 8px 10px;
   cursor: pointer;
   border-radius: 6px;
   transition: background-color 0.15s;
   color: var(--yt-spec-text-primary);
-  font-size: 12px;
+  font-size: 13px;
+  gap: 12px;
 }
 
 .quack-setting-compact:hover {
   background-color: var(--yt-spec-badge-chip-background);
 }
 
+/* Hide native checkbox */
 .quack-setting-compact input[type="checkbox"] {
-  margin-right: 6px;
-  cursor: pointer;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* YouTube-style toggle switch */
+.quack-toggle-switch {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 9px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.quack-toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
   width: 14px;
   height: 14px;
-  appearance: auto !important;
-  -webkit-appearance: checkbox !important;
-  accent-color: #3ea6ff;
-  opacity: 1 !important;
-  pointer-events: auto !important;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.quack-setting-compact input[type="checkbox"]:checked+.quack-toggle-switch {
+  background-color: #3ea6ff;
+}
+
+.quack-setting-compact input[type="checkbox"]:checked+.quack-toggle-switch::after {
+  transform: translateX(14px);
 }
 
 .quack-settings-section-title {
@@ -479,13 +545,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
+  padding: 10px 12px;
   cursor: pointer;
-  border-radius: 6px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--yt-spec-text-primary);
   transition: background-color 0.15s;
+  margin: 4px 0;
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 .quack-collapsible-header:hover {
@@ -504,22 +572,94 @@
 /* Collapsible content */
 .quack-collapsible-content {
   overflow: hidden;
-  max-height: 200px;
-  transition: max-height 0.2s ease, opacity 0.2s ease;
+  max-height: 300px;
+  transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.2s ease;
   opacity: 1;
+  padding: 8px 0;
 }
 
 .quack-collapsible-content.collapsed {
   max-height: 0;
   opacity: 0;
+  padding: 0;
+}
+
+/* Filter row layout */
+.quack-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+}
+
+.quack-filter-label {
+  font-size: 12px;
+  color: var(--yt-spec-text-primary);
+  min-width: 75px;
+  font-weight: 400;
+}
+
+.quack-filter-input {
+  flex: 1;
+  padding: 6px 10px;
+  background-color: var(--yt-spec-badge-chip-background);
+  border: 1px solid var(--yt-spec-10-percent-layer);
+  border-radius: 6px;
+  color: var(--yt-spec-text-primary);
+  font-size: 12px;
+  font-family: "Roboto", "Arial", sans-serif;
+  width: 70px;
+  transition: border-color 0.15s;
+}
+
+.quack-filter-input:focus {
+  outline: none;
+  border-color: var(--yt-spec-call-to-action, #3ea6ff);
+}
+
+.quack-filter-select {
+  flex: 1;
+  padding: 6px 10px;
+  background-color: #272727;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #f1f1f1;
+  font-size: 12px;
+  font-family: "Roboto", "Arial", sans-serif;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23aaa" d="M6 8L2 4h8z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+
+.quack-filter-select:focus {
+  outline: none;
+  border-color: #3ea6ff;
+}
+
+.quack-filter-select option {
+  background-color: #272727;
+  color: #f1f1f1;
+  padding: 8px;
+}
+
+/* Copy button - full width */
+.quack-copy-btn {
+  width: 100%;
+  margin-top: 8px;
 }
 
 /* 2x2 grid for download buttons */
 .quack-download-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 4px 0;
+  gap: 8px;
+  padding: 8px 0;
 }
 
 .quack-dl-btn {
@@ -527,20 +667,22 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8px 6px;
-  background-color: transparent;
+  padding: 10px 8px;
+  background-color: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--yt-spec-10-percent-layer);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--yt-spec-text-primary);
   font-size: 11px;
   font-family: "Roboto", "Arial", sans-serif;
   cursor: pointer;
   transition: all 0.15s ease;
+  gap: 4px;
 }
 
 .quack-dl-btn:hover:not(:disabled) {
   background-color: var(--yt-spec-badge-chip-background);
   border-color: var(--yt-spec-call-to-action, #3ea6ff);
+  transform: translateY(-1px);
 }
 
 .quack-dl-btn:disabled {
@@ -575,28 +717,28 @@
 .quack-settings-divider {
   height: 1px;
   background-color: var(--yt-spec-10-percent-layer);
-  margin: 6px 0;
+  margin: 12px 0;
 }
 
 .quack-shortcuts-section {
-  padding: 8px;
+  padding: 4px 0;
 }
 
 .quack-shortcuts-title {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--yt-spec-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .quack-shortcut-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 0;
-  font-size: 13px;
+  gap: 14px;
+  padding: 5px 0;
+  font-size: 12px;
   color: var(--yt-spec-text-primary);
 }
 
@@ -604,10 +746,10 @@
   background-color: var(--yt-spec-badge-chip-background);
   border: 1px solid var(--yt-spec-10-percent-layer);
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 4px 8px;
   font-family: "Roboto Mono", monospace;
-  font-size: 11px;
-  min-width: 50px;
+  font-size: 10px;
+  min-width: 55px;
   text-align: center;
 }
 

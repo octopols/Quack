@@ -51,22 +51,30 @@ function parseCommentRenderer(renderer) {
     if (renderer.authorThumbnail?.thumbnails) {
       authorThumbnail = renderer.authorThumbnail.thumbnails;
     } else if (renderer.authorThumbnail) {
-      // Sometimes it's directly an array
       authorThumbnail = Array.isArray(renderer.authorThumbnail) ? renderer.authorThumbnail : [renderer.authorThumbnail];
     }
+
+    const commentText = extractText(renderer.contentText);
+    const likesString = extractText(renderer.voteCount) || '0';
+    const likesNumeric = parseInt(likesString.replace(/[^0-9]/g, ''), 10) || 0;
+    const urlPattern = /https?:\/\/[^\s]+/gi;
+    const hasLinks = urlPattern.test(commentText);
 
     const comment = {
       id: renderer.commentId || '',
       author: extractText(renderer.authorText),
-      text: extractText(renderer.contentText),
+      text: commentText,
       timestamp: extractText(renderer.publishedTimeText),
-      likes: extractText(renderer.voteCount) || '0',
+      likes: likesString,
+      likesNumeric: likesNumeric,
       authorThumbnail: authorThumbnail,
       isReply: false,
+      isCreator: renderer.authorIsChannelOwner === true,
+      isHearted: !!(renderer.creatorHeart),
+      hasLinks: hasLinks,
       replies: []
     };
 
-    // Check if this is a reply based on comment structure
     if (renderer.commentId && renderer.commentId.includes('.')) {
       comment.isReply = true;
     }
@@ -80,7 +88,6 @@ function parseCommentRenderer(renderer) {
 
 function parseCommentViewModel(viewModel) {
   try {
-    // Extract author thumbnail with comprehensive fallback paths
     let authorThumbnail = [];
     const author = viewModel.author || {};
 
@@ -94,18 +101,27 @@ function parseCommentViewModel(viewModel) {
       authorThumbnail = Array.isArray(viewModel.authorThumbnail) ? viewModel.authorThumbnail : [viewModel.authorThumbnail];
     }
 
+    const commentText = viewModel.content?.text || viewModel.content?.content || '';
+    const likesString = viewModel.likeCount?.toString() || '0';
+    const likesNumeric = parseInt(likesString.replace(/[^0-9]/g, ''), 10) || 0;
+    const urlPattern = /https?:\/\/[^\s]+/gi;
+    const hasLinks = urlPattern.test(commentText);
+
     const comment = {
       id: viewModel.commentId || viewModel.commentKey || '',
       author: author.displayName || '',
-      text: viewModel.content?.text || viewModel.content?.content || '',
+      text: commentText,
       timestamp: viewModel.publishedTime || '',
-      likes: viewModel.likeCount?.toString() || '0',
+      likes: likesString,
+      likesNumeric: likesNumeric,
       authorThumbnail: authorThumbnail,
       isReply: false,
+      isCreator: author.isCreator === true,
+      isHearted: !!(viewModel.creatorHeart),
+      hasLinks: hasLinks,
       replies: []
     };
 
-    // Check if this is a reply
     if (comment.id && comment.id.includes('.')) {
       comment.isReply = true;
     }
@@ -143,26 +159,47 @@ function parseCommentEntity(entity) {
       authorThumbnail = Array.isArray(properties.authorThumbnail) ? properties.authorThumbnail : [properties.authorThumbnail];
     }
 
-
     // Extract channel URL for clickable profile links
-    // Simply construct URL from username
     let channelUrl = author.displayName ? `https://www.youtube.com/${author.displayName}` : '';
 
+    // Parse likes to numeric value
+    const likesString = toolbar.likeCountNotliked?.trim() || '0';
+    let likesNumeric = 0;
+    if (likesString && likesString !== ' ') {
+      // Handle formats like "1K", "2.5K", "1M" etc
+      const normalized = likesString.toUpperCase().replace(/,/g, '');
+      if (normalized.includes('K')) {
+        likesNumeric = parseFloat(normalized) * 1000;
+      } else if (normalized.includes('M')) {
+        likesNumeric = parseFloat(normalized) * 1000000;
+      } else {
+        likesNumeric = parseInt(normalized, 10) || 0;
+      }
+    }
 
+    // Check for links in comment text
+    const commentText = properties.content?.content || '';
+    const urlPattern = /https?:\/\/[^\s]+/gi;
+    const hasLinks = urlPattern.test(commentText);
+
+    // Check if creator hearted this comment (presence of creatorThumbnailUrl indicates heart)
+    const isHearted = !!(toolbar.creatorThumbnailUrl);
 
     const comment = {
       id: properties.commentId || '',
       author: author.displayName || '',
-      text: properties.content?.content || '',
+      text: commentText,
       timestamp: properties.publishedTime || '',
-      likes: toolbar.likeCountNotliked?.trim() || '0',
+      likes: likesString,
+      likesNumeric: likesNumeric,
       authorThumbnail: authorThumbnail,
       channelUrl: channelUrl,
       isReply: false,
+      isCreator: author.isCreator === true,
+      isHearted: isHearted,
+      hasLinks: hasLinks,
       replies: []
     };
-
-
 
     // Check if this is a reply: Use replyLevel (strongest signal) or ID format
     if ((properties.replyLevel && Number(properties.replyLevel) > 0) ||

@@ -369,6 +369,55 @@ function attachEventListeners() {
     });
   }
 
+  // Advanced filter handlers
+  const updateFilters = async () => {
+    const settings = settingsManager.getSettings();
+    settings.filters = settings.filters || {};
+
+    settings.filters.creatorOnly = ui.filterCreator?.checked || false;
+    settings.filters.heartedOnly = ui.filterHearted?.checked || false;
+    settings.filters.hasLinks = ui.filterLinks?.checked || false;
+    settings.filters.minLikes = parseInt(ui.filterMinLikes?.value, 10) || 0;
+    settings.filters.dateRange = ui.filterDateRange?.value || 'all';
+
+    await settingsManager.updateSettings(settings);
+    searcher.setSettings(settings);
+
+    // Re-run search if active (or if any filter is active, search with empty query to apply filters)
+    if (ui.isSearchActive || settings.filters.creatorOnly || settings.filters.heartedOnly ||
+      settings.filters.hasLinks || settings.filters.minLikes > 0 || settings.filters.dateRange !== 'all') {
+      handleSearch(currentSearchQuery || '');
+    }
+  };
+
+  if (ui.filterCreator) ui.filterCreator.addEventListener('change', updateFilters);
+  if (ui.filterHearted) ui.filterHearted.addEventListener('change', updateFilters);
+  if (ui.filterLinks) ui.filterLinks.addEventListener('change', updateFilters);
+  if (ui.filterMinLikes) ui.filterMinLikes.addEventListener('change', updateFilters);
+  if (ui.filterDateRange) ui.filterDateRange.addEventListener('change', updateFilters);
+
+  // Copy results button
+  if (ui.copyResultsBtn) {
+    ui.copyResultsBtn.addEventListener('click', async () => {
+      if (allMatchedItems.length === 0) return;
+
+      const text = allMatchedItems.map(comment => {
+        const likes = comment.likesNumeric || 0;
+        return `[${comment.author}] (${likes} likes)\n${comment.text}\n`;
+      }).join('\n---\n\n');
+
+      try {
+        await navigator.clipboard.writeText(text);
+        ui.copyResultsBtn.querySelector('span').textContent = 'Copied!';
+        setTimeout(() => {
+          ui.copyResultsBtn.querySelector('span').textContent = 'Copy Results';
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    });
+  }
+
   // Keyboard shortcuts for toggles (Alt+R for regex, Alt+W for whole word)
   if (ui.searchBox) {
     ui.searchBox.addEventListener('keydown', (e) => {
